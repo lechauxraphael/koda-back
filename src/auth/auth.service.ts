@@ -1,7 +1,7 @@
-
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -10,19 +10,43 @@ export class AuthService {
     private jwtService: JwtService
   ) {}
 
-  async signIn(
-    username: string,
-    pass: string,
-  ): Promise<{ access_token: string }> {
-    const user = await this.usersService.findOne(username);
-    if (user?.password !== pass) {
-      throw new UnauthorizedException();
+  async register(username: string, password: string, mail: string) {
+    
+    const existingUser = await this.usersService.findOne(username);
+    if (existingUser) {
+      return {
+        success: false,
+        message: 'Ce nom d’utilisateur existe déjà',
+      };
     }
-    const payload = { sub: user.userId, username: user.username };
+    // hash du mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const money = 1000;
+    // créer l'utilisateur
+    const user = await this.usersService.create({
+      username,
+      password: hashedPassword,
+      mail,
+      
+    });
+
     return {
-      // 💡 Here the JWT secret key that's used for signing the payload 
-      // is the key that was passsed in the JwtModule
-      access_token: await this.jwtService.signAsync(payload),
+      success: true,
+      message: "Utilisateur crée avec succès",
+      username: user.username,
+      userId: user.userId,
+      mail: user.mail,
     };
+  }
+
+  async signIn(username: string, password: string) {
+    const user = await this.usersService.findOne(username);
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) throw new UnauthorizedException('Invalid password');
+
+    const payload = { sub: user.userId, mail: user.mail };
+    return { access_token: await this.jwtService.signAsync(payload) };
   }
 }
