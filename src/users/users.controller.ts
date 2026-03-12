@@ -2,8 +2,7 @@ import { Controller, BadRequestException, NotFoundException, Body, Dependencies,
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { IAuthInfoRequest } from '../auth/auth.guard';
-import { register } from 'module';
-
+import { ParseIntPipe } from '@nestjs/common';
 
 @Controller('users')
 @Dependencies(UsersService)
@@ -17,38 +16,30 @@ export class UsersController {
     @Get('me')
     async getProfile(@Req() req: IAuthInfoRequest) {
         const user = await this.usersService.findOnePlayer(req.user.sub);
-        if (!user) throw new NotFoundException('Utilisateur non trouvé');
+                if (!user) throw new NotFoundException('Utilisateur non trouvé');
         return {
             userId: user.userId,
             username: user.username,
+            mail: user.mail,
             role: user.role,
-            dateCreation: user.dateCreation,
-            dateDerniereConnexion: user.dateDerniereConnexion,
-        };
-    }
-
-    
-    @Post('register')
-    async register(@Body() user: { username: string; password: string; mail: string }) {
-        return this.usersService.create(user);
-    }
-
-    @Get(':userId')
-    async getUser(@Param('userId') userId: number) {
-        const user = await this.usersService.findOnePlayer(Number(userId));
-        if (!user) throw new NotFoundException('Utilisateur non trouvé');
-        return {
-            userId: user.userId,
-            username: user.username,
-            role: user.role,
-            dateCreation: user.dateCreation,
-            dateDerniereConnexion: user.dateDerniereConnexion,
         };
     }
 
     @UseGuards(AuthGuard)
-    @Get()
+    @Get('allUsers')
     findAll() {
         return this.usersService.findAll();
+    }
+
+    @Get(':userId')
+    async getUser(@Param('userId', ParseIntPipe) userId: number) {
+        const user = await this.usersService.findOnePlayer(userId);
+        if (!user) throw new NotFoundException('Utilisateur non trouvé');
+        return {
+            userId: user.userId,
+            username: user.username,
+            mail: user.mail,
+            role: user.role,
+        };
     }
 }

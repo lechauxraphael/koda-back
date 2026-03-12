@@ -17,6 +17,10 @@ export class UsersService {
     return this.usersRepository.save(newUser);
   }
 
+  async delete(userId: number) {
+    return await this.usersRepository.delete({ userId });
+  }
+
   async findAll(): Promise<User[]> {
     return this.usersRepository.find();
   }
