@@ -27,7 +27,8 @@ export class AccountsController {
         if (!body || !body.accountId) {
             throw new BadRequestException("L'ID du compte est requis dans le corps de la requête");
         }
-        return this.accountsService.delete(body.accountId);
+        this.accountsService.delete(body.accountId);
+        return { message: 'Compte supprimé avec succès' };
     }
     
     @UseGuards(AuthGuard)
