@@ -4,11 +4,13 @@ import { AccountsService } from './accounts.service';
 import { AccountsController } from './accounts.controller';
 import { Account } from './accounts.entity';
 import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Account]),
-    AuthModule
+    AuthModule,
+    UsersModule
   ],
   controllers: [AccountsController],
   providers: [AccountsService],

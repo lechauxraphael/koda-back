@@ -30,22 +30,16 @@ export class AccountsController {
         return this.accountsService.delete(body.accountId);
     }
     
-//   @UseGuards(AuthGuard)
-//   @Get('allAccounts')
-//   findAll(@Req() req: IAuthInfoRequest) {
-//     return this.accountsService.findAll();
-//   }
+    @UseGuards(AuthGuard)
+    @Get('allUserAccounts')
+    findAllByUser(@Req() req: IAuthInfoRequest) {
+        return this.accountsService.findAllByUser(req.user.username);
+    }
 
-//   @UseGuards(AuthGuard)
-//   @Get('account/:name')
-//   findOne(@Req() req: IAuthInfoRequest, @Param('name') name: string) {
-//     return this.accountsService.findOne(name);
-//   }
-
-//   @UseGuards(AuthGuard)
-//   @Get('account/:accountId')
-//   findOneAccount(@Req() req: IAuthInfoRequest, @Param('accountId') accountId: number) {
-//     return this.accountsService.findOneAccount(accountId);
-//   }
+    @UseGuards(AuthGuard)
+    @Get('account/:accountId')
+    findOneAccount(@Req() req: IAuthInfoRequest, @Param('accountId') accountId: number) {
+        return this.accountsService.findOneAccount(accountId);
+    }
 }
 

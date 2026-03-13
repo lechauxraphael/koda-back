@@ -10,22 +10,22 @@ export class AccountsService {
   constructor(
     @InjectRepository(Account)
     private accountsRepository: Repository<Account>,
+    private usersService: UsersService,
   ) {}
 
   async findAll(): Promise<Account[]> {
     return this.accountsRepository.find();
   }
 
-  async findOne(name: string): Promise<Account | undefined> {
-    const account = await this.accountsRepository.findOne({ where: { name } });
-    return account ?? undefined;
+  async findAllByUser(username: string): Promise<Account[]> {
+    return this.accountsRepository.find({ where: { creator: username } });
   }
 
-  async findOneAccount(userId: number): Promise<Account | undefined> {
+  async findOneAccount(accountId: number): Promise<Account | { error: string }> {
     const account = await this.accountsRepository.findOne({
-      where: { accountId: userId },
+      where: { accountId },
     });
-    return account ?? undefined;
+    return account ?? { error: 'Le compte n\'existe pas' };
   }
 
   async create(account: Account): Promise<Account> {
