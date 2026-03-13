@@ -18,9 +18,9 @@ export class User {
   role: string;
 
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
-  dateCreation: Date;
+  CreationDate: Date;
 
   //Cela servira pour le système de streak
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
-  dateDerniereConnexion: Date; 
+  LastConnectionDate: Date; 
 }

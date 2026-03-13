@@ -26,4 +26,10 @@ export class AuthController {
   getProfile(@Request() req:any) {
     return req.user;
   }
+
+  @UseGuards(AuthGuard)
+  @Post('logout')
+  logout(@Request() req:any) {
+    return this.authService.logout(req.user);
+  }
 }

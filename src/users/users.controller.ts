@@ -1,16 +1,21 @@
-import { Controller, BadRequestException, NotFoundException, Body, Dependencies, Post, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, BadRequestException, NotFoundException, Body, Post, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { IAuthInfoRequest } from '../auth/auth.guard';
-import { register } from 'module';
 
 
 @Controller('users')
-@Dependencies(UsersService)
 export class UsersController {
-    usersService: UsersService;
-    constructor(usersService: UsersService) {
-        this.usersService = usersService;
+    constructor(private readonly usersService: UsersService) {}
+
+    @Post('register')
+    async register(@Body() user: { username: string; password: string; mail: string }) {
+        return this.usersService.create(user);
+    }
+
+    @Get('allUsers')
+    findAll() {
+        return this.usersService.findAll();
     }
 
     @UseGuards(AuthGuard)
@@ -22,15 +27,9 @@ export class UsersController {
             userId: user.userId,
             username: user.username,
             role: user.role,
-            dateCreation: user.dateCreation,
-            dateDerniereConnexion: user.dateDerniereConnexion,
+            CreationDate: user.CreationDate,
+            LastConnectionDate: user.LastConnectionDate,
         };
-    }
-
-    
-    @Post('register')
-    async register(@Body() user: { username: string; password: string; mail: string }) {
-        return this.usersService.create(user);
     }
 
     @Get(':userId')
@@ -41,14 +40,8 @@ export class UsersController {
             userId: user.userId,
             username: user.username,
             role: user.role,
-            dateCreation: user.dateCreation,
-            dateDerniereConnexion: user.dateDerniereConnexion,
+            CreationDate: user.CreationDate,
+            LastConnectionDate: user.LastConnectionDate,
         };
-    }
-
-    @UseGuards(AuthGuard)
-    @Get()
-    findAll() {
-        return this.usersService.findAll();
     }
 }

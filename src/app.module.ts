@@ -7,6 +7,9 @@ import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { User } from './users/user.entity';
+import { Account } from './accounts/accounts.entity';
+import { AccountsController } from './accounts/accounts.controller';
+import { AccountsModule } from './accounts/accounts.module';
 
 @Module({
   imports: [
@@ -16,11 +19,11 @@ import { User } from './users/user.entity';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'db.sqlite',
-      entities: [User],
+      entities: [User, Account],
       synchronize: true, // Only for development!
     }),
-    AuthModule, UsersModule],
-  controllers: [AppController, AuthController],
+    AuthModule, UsersModule, AccountsModule],
+  controllers: [AppController, AuthController, AccountsController],
   providers: [AppService],
 })
 export class AppModule {}
