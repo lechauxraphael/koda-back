@@ -2,28 +2,37 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { User } from './users/user.entity';
-import { Account } from './accounts/accounts.entity';
-import { AccountsController } from './accounts/accounts.controller';
-import { AccountsModule } from './accounts/accounts.module';
+import { Group } from 'src/groups/groups.entity';
+import { GroupsController } from './groups/groups.controller';
+import { GroupsModule } from './groups/groups.module';
+
+
 
 @Module({
   imports: [
     ConfigModule.forRoot({
        isGlobal: true 
     }),    
-    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'db.sqlite',
-      entities: [User, Account],
-      synchronize: true, // Only for development!
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'mysql',
+        host: config.get<string>('DB_HOST'),
+        port: config.get<number>('DB_PORT'),
+        username: config.get<string>('DB_USERNAME'),
+        password: config.get<string>('DB_PASSWORD'),
+        database: config.get<string>('DB_DATABASE'),
+        entities: [User, Group],
+        synchronize: true, // Only for development!
+      }),
     }),
-    AuthModule, UsersModule, AccountsModule],
-  controllers: [AppController, AuthController, AccountsController],
+    AuthModule, UsersModule, GroupsModule],
+  controllers: [AppController, AuthController, GroupsController],
   providers: [AppService],
 })
 export class AppModule {}
