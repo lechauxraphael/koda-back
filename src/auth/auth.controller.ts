@@ -36,7 +36,7 @@ export class AuthController {
   signIn(@Body() signInDto: Record<string, any>) {
     // On vérifie que le nom d'utilisateur et le mot de passe sont fournis
     if (!signInDto.username || !signInDto.password) {
-      throw new Error('Nom d\'utilisateur et mot de passe sont requis');
+      throw new Error('Nom d\'utilisateur mot de passe sont requis');
     }
     return this.authService.signIn(signInDto.username, signInDto.password);
   }
