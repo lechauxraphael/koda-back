@@ -1,10 +1,10 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable } from 'typeorm';
-import { User } from '../users/user.entity';
+import { Users } from '../users/user.entity';
 
 @Entity()
-export class Group {
+export class Groups {
   @PrimaryGeneratedColumn()
-  groupId: number;
+  id: number;
 
   @Column({ unique: false })
   name: string;
@@ -18,11 +18,11 @@ export class Group {
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
   dateCreation: Date;
 
-  @ManyToMany(() => User, (user) => user.groups)
+  @ManyToMany(() => Users, (user) => user.groups)
   @JoinTable({
     name: 'groups_users',
-    joinColumn: { name: 'id_groups', referencedColumnName: 'groupId' }, 
-    inverseJoinColumn: { name: 'id_users', referencedColumnName: 'userId' } 
+    joinColumn: { name: 'id_groups', referencedColumnName: 'id' }, 
+    inverseJoinColumn: { name: 'id_users', referencedColumnName: 'id' } 
   })
-  users: User[];
+  users: Users[];
  }

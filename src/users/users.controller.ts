@@ -19,7 +19,7 @@ export class UsersController {
         const user = await this.usersService.findOnePlayer(req.user.sub);
         if (!user) throw new NotFoundException('Utilisateur non trouvé');
         return {
-            userId: user.userId,
+            id: user.id,
             username: user.username,
             role: user.role,
             CreationDate: user.CreationDate,
@@ -32,7 +32,7 @@ export class UsersController {
         const user = await this.usersService.findOnePlayer(Number(userId));
         if (!user) throw new NotFoundException('Utilisateur non trouvé');
         return {
-            userId: user.userId,
+            id: user.id,
             username: user.username,
             role: user.role,
             CreationDate: user.CreationDate,

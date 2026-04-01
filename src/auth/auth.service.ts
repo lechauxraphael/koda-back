@@ -20,9 +20,9 @@ export class AuthService {
     }
     
     // Mettre à jour la date de dernière connexion
-    await this.usersService.updateLastConnection(user.userId);
+    await this.usersService.updateLastConnection(user.id);
 
-    const payload = { sub: user.userId, username: user.username };
+    const payload = { sub: user.id, username: user.username };
     return {
       // 💡 Here the JWT secret key that's used for signing the payload 
       // is the key that was passsed in the JwtModule

@@ -1,10 +1,10 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
-import { Group } from 'src/groups/groups.entity';
+import { Groups } from 'src/groups/groups.entity';
 
 @Entity()
-export class User {
+export class Users {
   @PrimaryGeneratedColumn()
-  userId: number;
+  id: number;
 
   @Column({ unique: true })
   username: string;
@@ -25,6 +25,6 @@ export class User {
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
   LastConnectionDate: Date; 
 
-  @ManyToMany(() => Group, (group) => group.users)
-  groups: Group[];
+  @ManyToMany(() => Groups, (group) => group.users)
+  groups: Groups[];
 }

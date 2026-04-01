@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './user.entity';
+import {  Users } from './user.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User)
+    @InjectRepository(Users)
 
-    private usersRepository: Repository<User>,
+    private usersRepository: Repository<Users>,
   ) {}
 
   async create(user: { username: string; password: string; mail: string }) {
@@ -16,26 +16,26 @@ export class UsersService {
     return this.usersRepository.save(newUser);
   }
 
-  async delete(userId: number) {
-    await this.usersRepository.delete(userId);
+  async delete(id: number) {
+    await this.usersRepository.delete(id);
   }
 
-  async findAll(): Promise<User[]> {
+  async findAll(): Promise<Users[]> {
     return this.usersRepository.find();
   }
 
-  async findOne(username: string): Promise<User | undefined> {
+  async findOne(username: string): Promise<Users | undefined> {
     const user = await this.usersRepository.findOne({ where: { username } });
     return user ?? undefined;
   }
 
-  async findOnePlayer(userId: number): Promise<User | undefined> {
-    const user = await this.usersRepository.findOne({ where: { userId: userId } });
+  async findOnePlayer(id: number): Promise<Users | undefined> {
+    const user = await this.usersRepository.findOne({ where: { id } });
     return user ?? undefined;
   }
 
-  async updateLastConnection(userId: number): Promise<void> {
-    await this.usersRepository.update(userId, {
+  async updateLastConnection(id: number): Promise<void> {
+    await this.usersRepository.update(id, {
       LastConnectionDate: new Date(),
     });
   }

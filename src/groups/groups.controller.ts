@@ -2,7 +2,7 @@ import { Controller, BadRequestException, NotFoundException, ForbiddenException,
 import { GroupsService } from './groups.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { IAuthInfoRequest } from '../auth/auth.guard';
-import { Group } from './groups.entity';
+import { Groups } from './groups.entity';
 
 @Controller('groups')
 export class GroupsController {
@@ -30,12 +30,12 @@ export class GroupsController {
 
     @UseGuards(AuthGuard)
     @Post('delete')
-    async delete(@Req() req: IAuthInfoRequest, @Body() body: { groupId: number }) {
-        if (!body || !body.groupId) {
+    async delete(@Req() req: IAuthInfoRequest, @Body() body: { id: number }) {
+        if (!body || !body.id) {
             throw new BadRequestException("L'ID du groupe est requis dans le corps de la requête");
         }
         
-        const result = await this.groupsService.delete(body.groupId, req.user.username);
+        const result = await this.groupsService.delete(body.id, req.user.username);
         
         if (typeof result === 'object' && 'error' in result) {
             if (result.error === "Le groupe n'existe pas") {
@@ -49,16 +49,29 @@ export class GroupsController {
 
     @UseGuards(AuthGuard)
     @Post('addUser')
-    async addUser(@Body() body: { groupId: number, username: string }) {
-        if (!body.groupId || !body.username) {
+    async addUser(@Body() body: { id: number, username: string }) {
+        if (!body.id || !body.username) {
             throw new BadRequestException('ID du groupe et nom d\'utilisateur sont requis');
         }
-        const result = await this.groupsService.addUserToGroup(body.groupId, body.username);
+        const result = await this.groupsService.addUserToGroup(body.id, body.username);
         if ('error' in result) {
             throw new BadRequestException(result.error);
         }
         return result;
     }
+
+    // @UseGuards(AuthGuard)
+    // @Post('joinGroup')
+    // async joinGroup(@Req() req: IAuthInfoRequest, @Body() body: { id: number }) {
+    //     if (!body.id) {
+    //         throw new BadRequestException('ID du groupe est requis');
+    //     }
+    //     const result = await this.groupsService.joinGroup(body.id, req.user.username);
+    //     if ('error' in result) {
+    //         throw new BadRequestException(result.error);
+    //     }
+    //     return result;
+    // }
     
     @UseGuards(AuthGuard)
     @Get('allUserGroups')
@@ -66,8 +79,8 @@ export class GroupsController {
         return this.groupsService.findAllByUser(req.user.username);
     }
 
-    @Get('group/:groupId')
-    findOneGroup(@Req() req: IAuthInfoRequest, @Param('groupId') groupId: number) {
-        return this.groupsService.findOneGroup(groupId);
+    @Get('group/:id')
+    findOneGroup(@Req() req: IAuthInfoRequest, @Param('id') id: number) {
+        return this.groupsService.findOneGroup(id);
     }
 }

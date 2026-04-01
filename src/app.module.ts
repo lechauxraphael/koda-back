@@ -6,8 +6,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { User } from './users/user.entity';
-import { Group } from 'src/groups/groups.entity';
+import { Users } from './users/user.entity';
+import { Groups } from 'src/groups/groups.entity';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsModule } from './groups/groups.module';
 
@@ -27,7 +27,7 @@ import { GroupsModule } from './groups/groups.module';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
-        entities: [User, Group],
+        entities: [Users, Groups],
         synchronize: true, // Only for development!
       }),
     }),
