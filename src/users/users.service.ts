@@ -16,6 +16,10 @@ export class UsersService {
     return this.usersRepository.save(newUser);
   }
 
+  async delete(userId: number) {
+    await this.usersRepository.delete(userId);
+  }
+
   async findAll(): Promise<User[]> {
     return this.usersRepository.find();
   }
@@ -28,5 +32,11 @@ export class UsersService {
   async findOnePlayer(userId: number): Promise<User | undefined> {
     const user = await this.usersRepository.findOne({ where: { userId: userId } });
     return user ?? undefined;
+  }
+
+  async updateLastConnection(userId: number): Promise<void> {
+    await this.usersRepository.update(userId, {
+      LastConnectionDate: new Date(),
+    });
   }
 }

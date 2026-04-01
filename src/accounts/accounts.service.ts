@@ -33,6 +33,7 @@ export class AccountsService {
   }
 
   async delete(accountId: number) {
-    await this.accountsRepository.delete({ accountId });
+    const result = await this.accountsRepository.delete({ accountId });
+    return result.affected && result.affected > 0;
   }
 }

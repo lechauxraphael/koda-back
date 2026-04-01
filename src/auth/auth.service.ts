@@ -18,6 +18,10 @@ export class AuthService {
     if (user?.password !== pass) {
       throw new UnauthorizedException();
     }
+    
+    // Mettre à jour la date de dernière connexion
+    await this.usersService.updateLastConnection(user.userId);
+
     const payload = { sub: user.userId, username: user.username };
     return {
       // 💡 Here the JWT secret key that's used for signing the payload 

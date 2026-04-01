@@ -1,4 +1,4 @@
-import { Controller, BadRequestException, Get, Post, Body, Req, UseGuards, Param } from '@nestjs/common';
+import { Controller, BadRequestException, NotFoundException, Get, Post, Body, Req, UseGuards, Param } from '@nestjs/common';
 import { AccountsService } from './accounts.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { IAuthInfoRequest } from '../auth/auth.guard';
@@ -23,11 +23,16 @@ export class AccountsController {
 
     @UseGuards(AuthGuard)
     @Post('deleteAccount')
-    delete(@Body() body: { accountId: number }) {
+    async delete(@Body() body: { accountId: number }) {
         if (!body || !body.accountId) {
             throw new BadRequestException("L'ID du compte est requis dans le corps de la requête");
         }
-        this.accountsService.delete(body.accountId);
+        
+        const deleted = await this.accountsService.delete(body.accountId);
+        if (!deleted) {
+            throw new NotFoundException("Le compte n'existe pas ou a déjà été supprimé");
+        }
+        
         return { message: 'Compte supprimé avec succès' };
     }
     

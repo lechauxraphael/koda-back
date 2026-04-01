@@ -8,11 +8,6 @@ import type { IAuthInfoRequest } from '../auth/auth.guard';
 export class UsersController {
     constructor(private readonly usersService: UsersService) {}
 
-    @Post('register')
-    async register(@Body() user: { username: string; password: string; mail: string }) {
-        return this.usersService.create(user);
-    }
-
     @Get('allUsers')
     findAll() {
         return this.usersService.findAll();
