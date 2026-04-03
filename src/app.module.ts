@@ -10,6 +10,8 @@ import { Users } from './users/user.entity';
 import { Groups } from 'src/groups/groups.entity';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsModule } from './groups/groups.module';
+import { TasksModule } from './tasks/tasks.module';
+import { Tasks } from './tasks/tasks.entity';
 
 
 
@@ -27,11 +29,11 @@ import { GroupsModule } from './groups/groups.module';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
-        entities: [Users, Groups],
+        entities: [Users, Groups, Tasks],
         synchronize: true, // Only for development!
       }),
     }),
-    AuthModule, UsersModule, GroupsModule],
+    AuthModule, UsersModule, GroupsModule, TasksModule],
   controllers: [AppController, AuthController, GroupsController],
   providers: [AppService],
 })
