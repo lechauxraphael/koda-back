@@ -11,6 +11,7 @@ import { Groups } from 'src/groups/groups.entity';
 import { Chat } from './chat/chat.entity';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsModule } from './groups/groups.module';
+import { Subscription } from './subscription/subscription.entity';
 
 
 
@@ -28,7 +29,7 @@ import { GroupsModule } from './groups/groups.module';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
-        entities: [Users, Groups, Chat],
+        entities: [Users, Groups, Chat, Subscription],
         synchronize: true, // Only for development!
       }),
     }),

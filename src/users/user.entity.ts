@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, OneToMany } from 'typeorm';
 import { Groups } from 'src/groups/groups.entity';
 import { Chat } from 'src/chat/chat.entity';
+import { Subscription } from 'src/subscription/subscription.entity';
 
 @Entity()
 export class Users {
@@ -31,4 +32,7 @@ export class Users {
 
   @OneToMany(() => Chat, (chat) => chat.user)
   chats!: Chat[];
+  
+  @OneToMany(() => Subscription, (subscription) => subscription.user)
+  subscription!: Subscription[];
 }
