@@ -3,13 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { Users } from './users/user.entity';
 import { Groups } from 'src/groups/groups.entity';
 import { Chat } from './chat/chat.entity';
-import { GroupsController } from './groups/groups.controller';
 import { GroupsModule } from './groups/groups.module';
 import { Subscription } from './subscription/subscription.entity';
 import { SubscriptionType } from './subscriptionType/subscriptionType.entity';
@@ -21,8 +19,6 @@ import { Mascot } from './mascot/mascot.entity';
 import { Rewards } from './rewards/rewards.entity';
 import { Partners } from './partners/partners.entity';
 import { TasksModule } from './tasks/tasks.module';
-import { TasksController } from './tasks/tasks.controller';
-import { UsersController } from './users/users.controller';
 
 
 @Module({
@@ -45,7 +41,7 @@ import { UsersController } from './users/users.controller';
       }),
     }),
     AuthModule, UsersModule, GroupsModule, TasksModule],
-  controllers: [AppController, AuthController, UsersController, GroupsController, TasksController],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

@@ -14,19 +14,16 @@ export class Tasks {
   title!: string;
 
   @Column()
-  password!: string;
-
-  @Column()
   description!: string;
 
-  @Column()
+  @Column({ default: 0 })
   points!: number;
 
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
   StartDate!: Date;
 
-  @Column()
-  EndDate!: Date; 
+  @Column({ type: 'datetime', nullable: true })
+  EndDate!: Date | null;
 
   @ManyToOne(() => Groups, (groups) => groups.tasks, { nullable: false })
   @JoinColumn({ name: 'groupId' })
@@ -39,11 +36,11 @@ export class Tasks {
   @OneToMany(() => UsersTasks, (usersTasks) => usersTasks.task)
   usersTasks!: UsersTasks[];
 
-  @ManyToOne(() => Rewards, (rewards) => rewards.tasks, { nullable: false })
+  @ManyToOne(() => Rewards, (rewards) => rewards.tasks, { nullable: true })
   @JoinColumn({ name: 'rewardId' })
-  reward!: Rewards;
+  reward!: Rewards | null;
 
-  @ManyToOne(() => Partners, (partners) => partners.tasks, { nullable: false })
+  @ManyToOne(() => Partners, (partners) => partners.tasks, { nullable: true })
   @JoinColumn({ name: 'partnerId' })
-  partner!: Partners;
+  partner!: Partners | null;
 }
