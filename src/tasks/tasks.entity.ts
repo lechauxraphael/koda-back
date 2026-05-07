@@ -1,49 +1,49 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable, ManyToOne, JoinColumn } from 'typeorm';
-import { Users } from '../users/user.entity';
-import { Groups } from '../groups/groups.entity';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Groups } from 'src/groups/groups.entity';
+import { Users } from 'src/users/user.entity';
+import { UsersTasks } from 'src/users-tasks/users-tasks.entity';
+import { Rewards } from 'src/rewards/rewards.entity';
+import { Partners } from 'src/partners/partners.entity';
 
 @Entity()
 export class Tasks {
   @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: false })
-  title: string;
+  id!: number;
 
   @Column()
-  description: string;
+  title!: string;
 
-  @Column({ default: 0 })
-  points: number;
+  @Column()
+  password!: string;
+
+  @Column()
+  description!: string;
+
+  @Column()
+  points!: number;
 
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
-  startDate: Date;
+  StartDate!: Date;
 
-  @Column({ default: null })
-  endDate: Date;
+  @Column()
+  EndDate!: Date; 
 
-  @ManyToOne(() => Groups)
+  @ManyToOne(() => Groups, (groups) => groups.tasks, { nullable: false })
   @JoinColumn({ name: 'groupId' })
-  group: Groups;
+  groupId!: Groups;
 
-//   @ManyToOne(() => Partner)
-//   @JoinColumn({ name: 'partnerId' })
-//   partner: Partner;
-
-
-//   @ManyToOne(() => Rewards)
-//   @JoinColumn({ name: 'rewardId' })
-//   reward: Rewards;  
-
-  @ManyToOne(() => Users)
+  @ManyToOne(()=> Users, (users) => users.tasks, { nullable: false })
   @JoinColumn({ name: 'userId' })
-  creator: Users;
+  userId!: Users;
 
-  @ManyToMany(() => Users, (user) => user.tasks)
-  @JoinTable({
-    name: 'tasks_users',
-    joinColumn: { name: 'id_tasks', referencedColumnName: 'id' }, 
-    inverseJoinColumn: { name: 'id_users', referencedColumnName: 'id' } 
-  })
-  users: Users[];
- }	
+  @OneToMany(() => UsersTasks, (usersTasks) => usersTasks.task)
+  usersTasks!: UsersTasks[];
+
+  @ManyToOne(() => Rewards, (rewards) => rewards.tasks, { nullable: false })
+  @JoinColumn({ name: 'rewardId' })
+  reward!: Rewards;
+
+  @ManyToOne(() => Partners, (partners) => partners.tasks, { nullable: false })
+  @JoinColumn({ name: 'partnerId' })
+  partner!: Partners;
+}
