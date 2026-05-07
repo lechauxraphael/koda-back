@@ -3,6 +3,7 @@ import {
   Controller,
   NotFoundException,
   Post,
+  Get,
   Body,
   Req,
   UseGuards,
@@ -44,5 +45,36 @@ export class TasksController {
     }
 
     return result;
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('accept')
+  async acceptTask(
+    @Req() req: IAuthInfoRequest,
+    @Body() body: { id: number },
+  ) {
+    if (!body || !body.id) {
+      throw new BadRequestException('L\'ID de la tâche est requis');
+    }
+
+    const result = await this.tasksService.acceptTaskInvitation(
+      body.id,
+      req.user.username,
+    );
+
+    if ('error' in result) {
+      if (result.error === 'Invitation de tâche introuvable') {
+        throw new NotFoundException(result.error);
+      }
+      throw new BadRequestException(result.error);
+    }
+
+    return { message: 'Tâche acceptée avec succès', task: result };
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('my-tasks')
+  async getMyTasks(@Req() req: IAuthInfoRequest) {
+    return this.tasksService.getUserTasks(req.user.username);
   }
 }
