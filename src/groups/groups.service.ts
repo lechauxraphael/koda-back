@@ -23,6 +23,7 @@ export class GroupsService {
     const userGroups = await this.groupsRepository.find({
       where: {
         groupUsers: {
+          invitation: true,
           user: {
             username,
           },
@@ -40,6 +41,29 @@ export class GroupsService {
     });
 
     return groups.map((group) => this.formatGroup(group));
+  }
+
+  async findPendingInvitations(username: string): Promise<any[]> {
+    const groups = await this.groupsRepository.find({
+      where: {
+        groupUsers: {
+          invitation: false,
+          user: {
+            username,
+          },
+        },
+      },
+      relations: ['groupUsers', 'groupUsers.user'],
+    });
+
+    return groups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      creator: group.creator,
+      maxGroupSize: group.maxGroupSize,
+      dateCreation: group.dateCreation,
+      invitation: false,
+    }));
   }
 
   async findOneGroup(id: number): Promise<any | { error: string }> {
@@ -64,7 +88,7 @@ export class GroupsService {
         const membership = this.groupUserRepository.create({
           group: savedGroup,
           user: creator,
-          invitation: false,
+          invitation: true,
         });
 
         await this.groupUserRepository.save(membership);
@@ -74,20 +98,41 @@ export class GroupsService {
     return this.findOneGroup(savedGroup.id);
   }
 
-  async addUserToGroup(id: number, username: string): Promise<any | { error: string }> {
+  async addUserToGroup(
+    id: number,
+    username: string,
+    requesterUsername: string,
+  ): Promise<any | { error: string }> {
     const group = await this.groupsRepository.findOne({
       where: { id },
       relations: ['groupUsers', 'groupUsers.user'],
     });
     if (!group) return { error: 'Le groupe n\'existe pas' };
 
+    if (group.creator !== requesterUsername) {
+      return { error: 'Seul le créateur du groupe peut inviter un utilisateur' };
+    }
+
     const user = await this.usersService.findOne(username);
     if (!user) return { error: 'L\'utilisateur n\'existe pas' };
 
-    const isAlreadyMember = group.groupUsers.some((groupUser: { user: { id: number; }; }) => groupUser.user.id === user.id);
-    if (isAlreadyMember) return { error: 'L\'utilisateur est déjà dans ce groupe' };
+    const existingMembership = group.groupUsers.find(
+      (groupUser) => groupUser.user.id === user.id,
+    );
 
-    if (group.groupUsers.length >= group.maxGroupSize) {
+    if (existingMembership?.invitation) {
+      return { error: 'L\'utilisateur fait déjà partie du groupe' };
+    }
+
+    if (existingMembership && !existingMembership.invitation) {
+      return { error: 'L\'utilisateur a déjà une invitation en attente' };
+    }
+
+    const activeMembersCount = group.groupUsers.filter(
+      (groupUser) => groupUser.invitation,
+    ).length;
+
+    if (activeMembersCount >= group.maxGroupSize) {
       return { error: 'Le groupe est complet' };
     }
 
@@ -97,6 +142,47 @@ export class GroupsService {
       invitation: false,
     });
 
+    await this.groupUserRepository.save(membership);
+
+    return {
+      message: 'Invitation envoyée avec succès',
+      groupId: group.id,
+      username: user.username,
+      invitation: false,
+    };
+  }
+
+  async acceptInvitation(
+    id: number,
+    username: string,
+  ): Promise<any | { error: string }> {
+    const group = await this.groupsRepository.findOne({
+      where: { id },
+      relations: ['groupUsers', 'groupUsers.user'],
+    });
+    if (!group) return { error: 'Le groupe n\'existe pas' };
+
+    const membership = group.groupUsers.find(
+      (groupUser) => groupUser.user.username === username,
+    );
+
+    if (!membership) {
+      return { error: 'Aucune invitation trouvée pour cet utilisateur' };
+    }
+
+    if (membership.invitation) {
+      return { error: 'L\'utilisateur fait déjà partie du groupe' };
+    }
+
+    const activeMembersCount = group.groupUsers.filter(
+      (groupUser) => groupUser.invitation,
+    ).length;
+
+    if (activeMembersCount >= group.maxGroupSize) {
+      return { error: 'Le groupe est complet' };
+    }
+
+    membership.invitation = true;
     await this.groupUserRepository.save(membership);
 
     return this.findOneGroup(id);
@@ -118,13 +204,16 @@ export class GroupsService {
   }
 
   private formatGroup(group: Groups) {
+    let {groupUsers, ...rest} = group;
     return {
-      ...group,
-      users: group.groupUsers.map((groupUser: { user: { id: any; username: any; }; invitation: any; }) => ({
-        id: groupUser.user.id,
-        username: groupUser.user.username,
-        invitation: groupUser.invitation,
-      })),
+      ...rest,
+      users: groupUsers
+        .filter((groupUser) => groupUser.invitation)
+        .map((groupUser) => ({
+          id: groupUser.user.id,
+          username: groupUser.user.username,
+          invitation: groupUser.invitation,
+        })),
     };
   }
 }

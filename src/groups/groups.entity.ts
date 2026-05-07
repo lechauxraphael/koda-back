@@ -21,7 +21,7 @@ export class Groups {
   dateCreation!: Date;
 
   @OneToMany(() => GroupUser, (groupUser) => groupUser.group)
-  groupUsers!: GroupUser[];
+groupUsers!: GroupUser[];
 
   @OneToMany(() => Chat, (chat) => chat.group)
   chats!: Chat[];

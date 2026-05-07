@@ -1,13 +1,13 @@
-
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
   ) {}
 
   async signIn(
@@ -15,17 +15,27 @@ export class AuthService {
     pass: string,
   ): Promise<{ access_token: string }> {
     const user = await this.usersService.findOne(username);
-    if (user?.password !== pass) {
+
+    if (!user) {
       throw new UnauthorizedException();
     }
-    
-    // Mettre à jour la date de dernière connexion
+
+    let isPasswordValid = await bcrypt.compare(pass, user.password);
+
+    // Compatibilite temporaire pour les anciens comptes en clair.
+    if (!isPasswordValid && user.password === pass) {
+      await this.usersService.updatePassword(user.id, pass);
+      isPasswordValid = true;
+    }
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException();
+    }
+
     await this.usersService.updateLastConnection(user.id);
 
     const payload = { sub: user.id, username: user.username };
     return {
-      // 💡 Here the JWT secret key that's used for signing the payload 
-      // is the key that was passsed in the JwtModule
       access_token: await this.jwtService.signAsync(payload),
     };
   }
