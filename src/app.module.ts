@@ -41,7 +41,7 @@ import { TasksModule } from './tasks/tasks.module';
       }),
     }),
     AuthModule, UsersModule, GroupsModule, TasksModule],
-  controllers: [AppController],
-  providers: [AppService],
+    controllers: [AppController],
+    providers: [AppService],
 })
 export class AppModule {}
