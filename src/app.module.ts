@@ -11,6 +11,7 @@ import { Groups } from 'src/groups/groups.entity';
 import { Chat } from './chat/chat.entity';
 import { GroupsController } from './groups/groups.controller';
 import { GroupsModule } from './groups/groups.module';
+import { TasksModule } from './tasks/tasks.module';
 import { Subscription } from './subscription/subscription.entity';
 import { SubscriptionType } from './subscriptionType/subscriptionType.entity';
 import { GroupUser } from './group-user/group-user.entity';
@@ -40,7 +41,7 @@ import { Partners } from './partners/partners.entity';
         synchronize: true, // Only for development!
       }),
     }),
-    AuthModule, UsersModule, GroupsModule],
+    AuthModule, UsersModule, GroupsModule, TasksModule],
   controllers: [AppController, AuthController, GroupsController],
   providers: [AppService],
 })
