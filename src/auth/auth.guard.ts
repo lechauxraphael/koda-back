@@ -1,4 +1,3 @@
-
 import {
   CanActivate,
   ExecutionContext,
@@ -9,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
 export interface IAuthInfoRequest extends Request {
-  user?: any; // ici on stock le payload JWT
+  user?: any;
 }
 
 @Injectable()
@@ -17,21 +16,19 @@ export class AuthGuard implements CanActivate {
   constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<IAuthInfoRequest>();
     const token = this.extractTokenFromHeader(request);
+
     if (!token) {
-      throw new UnauthorizedException("Veuillez vous connecter");
+      throw new UnauthorizedException('Token manquant ou invalide');
     }
+
     try {
-      // 💡 Here the JWT secret key that's used for verifying the payload 
-      // is the key that was passsed in the JwtModule
-      const payload = await this.jwtService.verifyAsync(token);
-      // 💡 We're assigning the payload to the request object here
-      // so that we can access it in our route handlers
-      request['user'] = payload;
+      request.user = await this.jwtService.verifyAsync(token);
     } catch {
-      throw new UnauthorizedException("Veuillez vous connecter");
+      throw new UnauthorizedException('Token manquant ou invalide');
     }
+
     return true;
   }
 
