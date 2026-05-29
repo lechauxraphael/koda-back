@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -59,7 +60,9 @@ export class AuthController {
   signIn(@Body() signInDto: LoginDto) {
     // On vérifie que le nom d'utilisateur et le mot de passe sont fournis
     if (!signInDto.username || !signInDto.password) {
-      throw new Error("Nom d'utilisateur mot de passe sont requis");
+      throw new BadRequestException(
+        "Nom d'utilisateur et mot de passe sont requis",
+      );
     }
     return this.authService.signIn(signInDto.username, signInDto.password);
   }
