@@ -19,6 +19,7 @@ import { Mascot } from './mascot/mascot.entity';
 import { Rewards } from './rewards/rewards.entity';
 import { Partners } from './partners/partners.entity';
 import { TasksModule } from './tasks/tasks.module';
+import { InfoSheetModule } from './info_sheet/infoSheet.module';
 
 
 @Module({
