@@ -56,6 +56,10 @@ export class UsersService {
     await this.usersRepository.update(id, data);
     return this.usersRepository.findOne({ where: { id } }) as Promise<Users>;
   }
+
+  async setActive(id: number, isActive: boolean): Promise<void> {
+    await this.usersRepository.update(id, { isActive });
+  }
 }
 
 

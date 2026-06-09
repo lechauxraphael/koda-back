@@ -1,6 +1,7 @@
 import {
   Controller,
   NotFoundException,
+  ForbiddenException,
   Body,
   Get,
   Patch,
@@ -89,5 +90,25 @@ export class UsersController {
       CreationDate: user.CreationDate,
       LastConnectionDate: user.LastConnectionDate,
     };
+  }
+  @UseGuards(AuthGuard)
+  @Get('admin/all')
+  async adminGetAll(@Req() req: IAuthInfoRequest) {
+    if (req.user.role !== 'admin') throw new ForbiddenException();
+    return this.usersService.findAll();
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('admin/:id/active')
+  async adminSetActive(
+    @Req() req: IAuthInfoRequest,
+    @Param('id') id: string,
+    @Body() body: { isActive: boolean },
+  ) {
+    if (req.user.role !== 'admin') throw new ForbiddenException();
+
+    await this.usersService.setActive(Number(id), body.isActive);
+
+    return { message: 'Statut mis à jour' };
   }
 }

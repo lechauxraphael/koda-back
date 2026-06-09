@@ -24,6 +24,9 @@ export class Users {
   @Column({default: 'user'})
   role!: string;
 
+  @Column({ default: true })
+  isActive!: boolean;
+
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
   CreationDate!: Date;
 

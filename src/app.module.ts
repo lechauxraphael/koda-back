@@ -41,7 +41,7 @@ import { InfoSheetModule } from './info_sheet/infoSheet.module';
         synchronize: true, // Only for development!
       }),
     }),
-    AuthModule, UsersModule, GroupsModule, TasksModule],
+    AuthModule, UsersModule, GroupsModule, TasksModule, InfoSheetModule,],
     controllers: [AppController],
     providers: [AppService],
 })
