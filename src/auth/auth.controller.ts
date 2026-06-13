@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  NotFoundException,
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
+  Req,
   Post,
   Request,
   Delete,
@@ -44,13 +46,15 @@ export class AuthController {
     description: 'Utilisateur supprime',
     type: MessageResponseDto,
   })
-  @ApiResponse({ status: 401, description: 'Token manquant ou invalide' })
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
-  @Delete('delete')
-  async deleteUser(@Request() req: any) {
-    // Dans le payload JWT, l'ID est stocké dans la propriété 'sub'
-    await this.usersService.delete(Number(req.user.sub));
-    return { message: 'Utilisateur supprimé avec succès' };
+  @Post('change-password')
+  async changePassword(
+    @Req() req: any,
+    @Body() body: { newPassword: string }
+  ) {
+    await this.usersService.updatePassword(Number(req.user.sub), body.newPassword);
+    return { message: 'Mot de passe mis à jour' };
   }
 
   @ApiOperation({ summary: 'Connecter un utilisateur' })
@@ -58,7 +62,6 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   signIn(@Body() signInDto: LoginDto) {
-    // On vérifie que le nom d'utilisateur et le mot de passe sont fournis
     if (!signInDto.username || !signInDto.password) {
       throw new BadRequestException(
         "Nom d'utilisateur et mot de passe sont requis",
@@ -85,5 +88,23 @@ export class AuthController {
   @Post('logout')
   logout(@Request() req: any) {
     return this.authService.logout(req.user);
+  }
+
+  @ApiOperation({ summary: 'Trouver un compte par email' })
+  @ApiResponse({ status: 200, description: 'Compte trouvé' })
+  @ApiResponse({ status: 404, description: 'Aucun compte trouvé' })
+  @Post('find-by-email')
+  async findByEmail(@Body() body: { mail: string }) {
+    const user = await this.usersService.findByMail(body.mail);
+    if (!user) throw new NotFoundException('Aucun compte trouvé');
+    return { id: user.id, username: user.username };
+  }
+
+  @ApiOperation({ summary: 'Réinitialiser le mot de passe' })
+  @ApiResponse({ status: 200, description: 'Mot de passe mis à jour' })
+  @Post('reset-password')
+  async resetPassword(@Body() body: { userId: number; newPassword: string }) {
+    await this.usersService.updatePassword(body.userId, body.newPassword);
+    return { message: 'Mot de passe mis à jour' };
   }
 }

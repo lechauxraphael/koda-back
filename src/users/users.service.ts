@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {  Users } from './user.entity';
+import { Users } from './user.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -10,7 +10,6 @@ export class UsersService {
 
   constructor(
     @InjectRepository(Users)
-
     private usersRepository: Repository<Users>,
   ) {}
 
@@ -41,6 +40,10 @@ export class UsersService {
     return user ?? undefined;
   }
 
+  async findByMail(mail: string): Promise<Users | null> {  // 👈 ajouté
+    return this.usersRepository.findOne({ where: { mail } });
+  }
+
   async updateLastConnection(id: number): Promise<void> {
     await this.usersRepository.update(id, {
       LastConnectionDate: new Date(),
@@ -52,7 +55,7 @@ export class UsersService {
     await this.usersRepository.update(id, { password: hashedPassword });
   }
 
-  async update(id: number, data: { username?: string; mail?: string }): Promise<Users> {
+  async update(id: number, data: { username?: string; mail?: string; avatar?: string; banner?: string; bio?: string; tags?: string; firstname?: string; lastname?: string }): Promise<Users> {
     await this.usersRepository.update(id, data);
     return this.usersRepository.findOne({ where: { id } }) as Promise<Users>;
   }
@@ -61,5 +64,3 @@ export class UsersService {
     await this.usersRepository.update(id, { isActive });
   }
 }
-
-

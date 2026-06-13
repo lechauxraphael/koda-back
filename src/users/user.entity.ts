@@ -34,6 +34,12 @@ export class Users {
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
   LastConnectionDate!: Date; 
 
+  @Column({ nullable: true })
+  avatar!: string;
+
+  @Column({ nullable: true })
+  banner!: string;
+
   @OneToMany(() => GroupUser, (groupUser) => groupUser.user)
   groupUsers!: GroupUser[];
 
@@ -54,4 +60,16 @@ export class Users {
 
   @OneToMany(() => Mascot, (mascot) => mascot.user, { nullable: false })
   mascot!: Mascot[];
+
+  @Column({ nullable: true, length: 1000 })
+  bio!: string;
+
+  @Column({ nullable: true })
+  tags!: string;
+
+  @Column({ nullable: true })
+  firstname!: string;
+
+  @Column({ nullable: true })
+  lastname!: string;
 }
