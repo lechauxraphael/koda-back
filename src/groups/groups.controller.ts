@@ -182,4 +182,14 @@ export class GroupsController {
   findOneGroup(@Param('id') id: number) {
     return this.groupsService.findOneGroup(id);
   }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post('leave')
+  async leaveGroup(@Req() req: IAuthInfoRequest, @Body() body: GroupIdDto) {
+    if (!body.id) throw new BadRequestException('ID du groupe requis');
+    const result = await this.groupsService.leaveGroup(body.id, req.user.username);
+    if ('error' in result) throw new BadRequestException(result.error);
+    return result;
+  }
 }

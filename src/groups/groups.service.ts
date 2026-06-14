@@ -125,7 +125,14 @@ export class GroupsService {
     }
 
     if (existingMembership && !existingMembership.invitation) {
-      return { error: 'L\'utilisateur a déjà une invitation en attente' };
+      existingMembership.invitation = true;
+      await this.groupUserRepository.save(existingMembership);
+      return {
+        message: 'Utilisateur ajouté avec succès',
+        groupId: group.id,
+        username: user.username,
+        invitation: true,
+      };
     }
 
     const activeMembersCount = group.groupUsers.filter(
@@ -139,16 +146,16 @@ export class GroupsService {
     const membership = this.groupUserRepository.create({
       group,
       user,
-      invitation: false,
+      invitation: true,
     });
 
     await this.groupUserRepository.save(membership);
 
     return {
-      message: 'Invitation envoyée avec succès',
+      message: 'Utilisateur ajouté avec succès',
       groupId: group.id,
       username: user.username,
-      invitation: false,
+      invitation: true,
     };
   }
 
@@ -202,6 +209,32 @@ export class GroupsService {
     await this.groupsRepository.remove(group);
     return true;
   }
+
+  async leaveGroup(groupId: number, username: string): Promise<any> {
+  const group = await this.groupsRepository.findOne({
+    where: { id: groupId },
+    relations: ['groupUsers', 'groupUsers.user'],
+  });
+
+  if (!group) return { error: 'Le groupe n\'existe pas' };
+
+  if (group.creator === username) {
+    return { error: 'Le créateur ne peut pas quitter le groupe, supprimez-le à la place' };
+  }
+
+  const membership = group.groupUsers.find(
+    (gu) => gu.user.username === username,
+  );
+
+  if (!membership) return { error: 'Tu ne fais pas partie de ce groupe' };
+
+  await this.groupUserRepository.delete({
+    groupId: groupId,
+    userId: membership.userId,
+  });
+
+  return { message: 'Vous avez quitté le groupe' };
+}
 
   private formatGroup(group: Groups) {
     let {groupUsers, ...rest} = group;

@@ -20,7 +20,9 @@ import { Rewards } from './rewards/rewards.entity';
 import { Partners } from './partners/partners.entity';
 import { TasksModule } from './tasks/tasks.module';
 import { InfoSheetModule } from './info_sheet/infoSheet.module';
-
+import { FriendsModule } from './friends/friends.module';
+import { Friendship } from './friends/friendship.entity';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -37,12 +39,13 @@ import { InfoSheetModule } from './info_sheet/infoSheet.module';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
         entities: [Users, Groups, GroupUser, Chat, Subscription, SubscriptionType, 
-                  Tasks, UsersTasks, InfoSheet, Mascot, Rewards, Partners],
-        synchronize: true, // Only for development!
+                  Tasks, UsersTasks, InfoSheet, Mascot, Rewards, Partners, Friendship],
+        synchronize: true,
       }),
     }),
-    AuthModule, UsersModule, GroupsModule, TasksModule, InfoSheetModule,],
-    controllers: [AppController],
-    providers: [AppService],
+    AuthModule, UsersModule, GroupsModule, TasksModule, InfoSheetModule, FriendsModule, ChatModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
