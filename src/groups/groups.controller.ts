@@ -192,4 +192,14 @@ export class GroupsController {
     if ('error' in result) throw new BadRequestException(result.error);
     return result;
   }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post('removeMember')
+  async removeMember(@Req() req: IAuthInfoRequest, @Body() body: { groupId: number; username: string }) {
+    if (!body.groupId || !body.username) throw new BadRequestException('groupId et username requis');
+    const result = await this.groupsService.removeMember(body.groupId, body.username, req.user.username);
+    if ('error' in result) throw new BadRequestException(result.error);
+    return result;
+  }
 }

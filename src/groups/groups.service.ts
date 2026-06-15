@@ -210,6 +210,26 @@ export class GroupsService {
     return true;
   }
 
+  async removeMember(groupId: number, username: string, requesterUsername: string): Promise<any> {
+  const group = await this.groupsRepository.findOne({
+    where: { id: groupId },
+    relations: ['groupUsers', 'groupUsers.user'],
+  });
+
+  if (!group) return { error: 'Le groupe n\'existe pas' };
+  if (group.creator !== requesterUsername) return { error: 'Seul le créateur peut retirer un membre' };
+
+  const membership = group.groupUsers.find(gu => gu.user.username === username);
+  if (!membership) return { error: 'Utilisateur non trouvé dans le groupe' };
+
+  await this.groupUserRepository.delete({
+    groupId: groupId,
+    userId: membership.userId,
+  });
+
+    return { message: 'Membre retiré' };
+  }
+
   async leaveGroup(groupId: number, username: string): Promise<any> {
   const group = await this.groupsRepository.findOne({
     where: { id: groupId },
