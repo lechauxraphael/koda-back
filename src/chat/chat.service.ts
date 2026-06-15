@@ -26,4 +26,14 @@ export class ChatService {
     });
     return this.chatRepo.save(chat);
   }
+
+  async sendImage(groupId: number, userId: number, imageUrl: string) {
+    const chat = this.chatRepo.create({
+        group: { id: groupId } as any,
+        user: { id: userId } as any,
+        message: '',
+        imageUrl,
+    });
+    return this.chatRepo.save(chat);
+    }
 }

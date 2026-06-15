@@ -13,6 +13,9 @@ export class Chat {
   @Column({ name: 'sentAt', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   sentAt!: Date;
 
+  @Column({ nullable: true })
+  imageUrl!: string;
+
   @ManyToOne(() => Users, (user) => user.chats, { nullable: false })
   @JoinColumn({ name: 'userId' })
   user!: Users;
