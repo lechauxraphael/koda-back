@@ -37,16 +37,34 @@ export class ChatController {
     return this.chatService.sendMessage(Number(groupId), Number(req.user.sub), body.message);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard)
-  @Post(':groupId/image')
-  @UseInterceptors(FileInterceptor('file', { storage }))
-  async sendImage(
-    @Param('groupId') groupId: number,
-    @Req() req: IAuthInfoRequest,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    const imageUrl = `/uploads/${file.filename}`;
-    return this.chatService.sendImage(Number(groupId), Number(req.user.sub), imageUrl);
-  }
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
+@Post(':groupId/image')
+@UseInterceptors(FileInterceptor('file', { storage }))
+async sendImage(
+  @Param('groupId') groupId: number,
+  @Req() req: IAuthInfoRequest,
+  @UploadedFile() file: Express.Multer.File,
+) {
+  const imageUrl = `/uploads/${file.filename}`;
+  const taskId = req.body?.taskId ? Number(req.body.taskId) : undefined;
+  return this.chatService.sendImage(
+    Number(groupId),
+    Number(req.user.sub),
+    imageUrl,
+    taskId,
+  );
+}
+
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
+@Post(':groupId/delete-validation-message')
+async deleteValidationMessage(
+  @Param('groupId') groupId: number,
+  @Req() req: IAuthInfoRequest,
+  @Body() body: { taskId: number },
+) {
+  await this.chatService.deleteValidationMessage(Number(groupId), Number(req.user.sub), Number(body.taskId));
+  return { message: 'ok' };
+}
 }

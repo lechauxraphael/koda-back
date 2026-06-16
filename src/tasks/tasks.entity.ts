@@ -25,6 +25,15 @@ export class Tasks {
   @Column({ type: 'datetime', nullable: true })
   EndDate!: Date | null;
 
+  @Column({ nullable: true })
+  frequency!: string; // JSON string ex: '["Lundi","Mercredi"]'
+
+  @Column({ nullable: true, type: 'datetime' })
+  deadline!: Date | null;
+
+  @Column({ nullable: true })
+  reminderTime!: string; // ex: "09:00" ou null si pas de rappel
+
   @ManyToOne(() => Groups, (groups) => groups.tasks, { nullable: false })
   @JoinColumn({ name: 'groupId' })
   groupId!: Groups;

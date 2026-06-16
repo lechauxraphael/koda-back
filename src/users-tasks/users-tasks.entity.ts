@@ -20,4 +20,10 @@ export class UsersTasks {
 
   @Column({ default: false })
   invitation!: boolean;
+
+  @Column({ default: false })
+  validated!: boolean;
+
+  @Column({ nullable: true })
+  validationProofUrl!: string; // URL de la photo de validation
 }

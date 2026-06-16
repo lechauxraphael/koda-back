@@ -27,13 +27,24 @@ export class ChatService {
     return this.chatRepo.save(chat);
   }
 
-  async sendImage(groupId: number, userId: number, imageUrl: string) {
+  async sendImage(groupId: number, userId: number, imageUrl: string, taskId?: number) {
     const chat = this.chatRepo.create({
-        group: { id: groupId } as any,
-        user: { id: userId } as any,
-        message: '',
-        imageUrl,
-    });
+      group: { id: groupId } as any,
+      user: { id: userId } as any,
+      message: '',
+      imageUrl,
+      taskId: taskId ?? null,
+    } as any);
     return this.chatRepo.save(chat);
-    }
+  }
+
+  async deleteValidationMessage(groupId: number, userId: number, taskId: number): Promise<void> {
+  await this.chatRepo
+    .createQueryBuilder()
+    .delete()
+    .where('groupId = :groupId', { groupId })
+    .andWhere('userId = :userId', { userId })
+    .andWhere('taskId = :taskId', { taskId })
+    .execute();
+}
 }

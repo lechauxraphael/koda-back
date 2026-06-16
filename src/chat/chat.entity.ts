@@ -20,6 +20,9 @@ export class Chat {
   @JoinColumn({ name: 'userId' })
   user!: Users;
 
+  @Column({ nullable: true })
+  taskId!: number;
+
   @ManyToOne(() => Groups, (group) => group.chats, { nullable: false })
   @JoinColumn({ name: 'groupId' })
   group!: Groups;

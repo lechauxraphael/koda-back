@@ -23,6 +23,8 @@ import { InfoSheetModule } from './info_sheet/infoSheet.module';
 import { FriendsModule } from './friends/friends.module';
 import { Friendship } from './friends/friendship.entity';
 import { ChatModule } from './chat/chat.module';
+import { TaskValidation } from './task-validation/task-validation.entity';
+import { TaskValidationModule } from './task-validation/task-validation.module';
 
 @Module({
   imports: [
@@ -39,11 +41,11 @@ import { ChatModule } from './chat/chat.module';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_DATABASE'),
         entities: [Users, Groups, GroupUser, Chat, Subscription, SubscriptionType, 
-                  Tasks, UsersTasks, InfoSheet, Mascot, Rewards, Partners, Friendship],
+                  Tasks, UsersTasks, InfoSheet, Mascot, Rewards, Partners, Friendship, TaskValidation],
         synchronize: true,
       }),
     }),
-    AuthModule, UsersModule, GroupsModule, TasksModule, InfoSheetModule, FriendsModule, ChatModule,
+    AuthModule, UsersModule, GroupsModule, TasksModule, InfoSheetModule, FriendsModule, ChatModule, TaskValidationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
