@@ -20,6 +20,12 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        "Votre compte est désactivé. Renseignez-vous auprès d'un admin pour le réactiver.",
+      );
+    }
+
     let isPasswordValid = await bcrypt.compare(pass, user.password);
 
     // Compatibilite temporaire pour les anciens comptes en clair.

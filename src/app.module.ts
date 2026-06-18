@@ -31,20 +31,20 @@ import { TaskValidationModule } from './task-validation/task-validation.module';
     ConfigModule.forRoot({
        isGlobal: true 
     }),    
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'mysql',
-        host: config.get<string>('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.get<string>('DB_USERNAME'),
-        password: config.get<string>('DB_PASSWORD'),
-        database: config.get<string>('DB_DATABASE'),
-        entities: [Users, Groups, GroupUser, Chat, Subscription, SubscriptionType, 
-                  Tasks, UsersTasks, InfoSheet, Mascot, Rewards, Partners, Friendship, TaskValidation],
-        synchronize: true,
-      }),
-    }),
+TypeOrmModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (config: ConfigService) => ({
+    type: 'mysql',
+    host: config.get<string>('DB_HOST'),
+    port: config.get<number>('DB_PORT'),
+    username: config.get<string>('DB_USERNAME'),
+    password: config.get<string>('DB_PASSWORD'),
+    database: config.get<string>('DB_DATABASE'),
+    entities: [Users, Groups, GroupUser, Chat, Subscription, SubscriptionType, 
+              Tasks, UsersTasks, InfoSheet, Mascot, Rewards, Partners, Friendship, TaskValidation],
+    synchronize: true,
+  }),
+}),
     AuthModule, UsersModule, GroupsModule, TasksModule, InfoSheetModule, FriendsModule, ChatModule, TaskValidationModule,
   ],
   controllers: [AppController],

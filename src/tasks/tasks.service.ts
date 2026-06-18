@@ -112,45 +112,45 @@ export class TasksService {
     return userTasks.map(ut => ut.task);
   }
 
-async getGroupTasks(groupId: number): Promise<any[]> {
-  const tasks = await this.tasksRepository
-    .createQueryBuilder('task')
-    .leftJoinAndSelect('task.userId', 'creator')
-    .leftJoinAndSelect('task.usersTasks', 'ut')
-    .leftJoinAndSelect('ut.user', 'participant')
-    .where('task.groupId = :groupId', { groupId })
-    .orderBy('task.StartDate', 'DESC')
-    .getMany();
+  async getGroupTasks(groupId: number): Promise<any[]> {
+    const tasks = await this.tasksRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.userId', 'creator')
+      .leftJoinAndSelect('task.usersTasks', 'ut')
+      .leftJoinAndSelect('ut.user', 'participant')
+      .where('task.groupId = :groupId', { groupId })
+      .orderBy('task.StartDate', 'DESC')
+      .getMany();
 
-  // Déduplique par id (au cas où)
-  const seen = new Set();
-  return tasks
-    .filter(t => {
-      if (seen.has(t.id)) return false;
-      seen.add(t.id);
-      return true;
-    })
-    .map(t => ({
-      id: t.id,
-      title: t.title,
-      description: t.description,
-      frequency: t.frequency,
-      deadline: t.EndDate,
-      reminderTime: t.reminderTime,
-      startDate: t.StartDate,
-      creator: {
-        id: t.userId.id,
-        username: t.userId.username,
-      },
-      participants: t.usersTasks?.map(ut => ({
-        userId: ut.userId,
-        username: ut.user?.username,
-        avatar: ut.user?.avatar ?? null,
-        validated: ut.validated,
-        validationProofUrl: ut.validationProofUrl,
-      })) ?? [],
-    }));
-}
+    // Déduplique par id (au cas où)
+    const seen = new Set();
+    return tasks
+      .filter(t => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      })
+      .map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        frequency: t.frequency,
+        deadline: t.EndDate,
+        reminderTime: t.reminderTime,
+        startDate: t.StartDate,
+        creator: {
+          id: t.userId.id,
+          username: t.userId.username,
+        },
+        participants: t.usersTasks?.map(ut => ({
+          userId: ut.userId,
+          username: ut.user?.username,
+          avatar: ut.user?.avatar ?? null,
+          validated: ut.validated,
+          validationProofUrl: ut.validationProofUrl,
+        })) ?? [],
+      }));
+  }
 
   async validateTask(taskId: number, userId: number, proofUrl: string): Promise<any> {
     const userTask = await this.usersTasksRepository.findOne({
@@ -178,27 +178,321 @@ async getGroupTasks(groupId: number): Promise<any[]> {
   }
 
   async getPendingReminders(userId: number): Promise<any[]> {
-    const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long' });
-    const todayCapital = today.charAt(0).toUpperCase() + today.slice(1);
+  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long' });
+  const todayCapital = today.charAt(0).toUpperCase() + today.slice(1);
 
-    const userTasks = await this.usersTasksRepository.find({
-      where: { userId, invitation: true },
-      relations: ['task'],
+  const userTasks = await this.usersTasksRepository
+    .createQueryBuilder('ut')
+    .leftJoinAndSelect('ut.task', 'task')
+    .leftJoinAndSelect('task.groupId', 'group')
+    .where('ut.userId = :userId', { userId })
+    .andWhere('ut.invitation = true')
+    .getMany();
+
+  return userTasks
+    .filter(ut => {
+      if (!ut.task?.reminderTime) return false;
+      if (ut.task.isDailyMission) return false;
+      if (!ut.task.frequency) return true;
+      try {
+        const days: string[] = JSON.parse(ut.task.frequency);
+        return days.includes(todayCapital);
+      } catch { return false; }
+    })
+    .map(ut => ({
+      taskId: ut.task.id,
+      title: ut.task.title,
+      reminderTime: ut.task.reminderTime,
+      groupId: ut.task.groupId?.id ?? null,
+    }));
+}
+
+  async createDailyMission(adminId: number, data: {
+    title: string;
+    description: string;
+    points: number;
+    targetSteps: number;
+    date: string; // format YYYY-MM-DD
+  }): Promise<any> {
+    const admin = await this.usersRepository.findOne({ where: { id: adminId } });
+    if (!admin || admin.role !== 'admin') {
+      return { error: 'Action réservée aux administrateurs' };
+    }
+
+    // Insertion via requête SQL brute pour éviter toute conversion de date par TypeORM
+    const result = await this.tasksRepository.query(
+      `INSERT INTO tasks (title, description, points, StartDate, EndDate, isDailyMission, targetSteps, groupId, userId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.title,
+        data.description,
+        data.points,
+        `${data.date} 12:00:00`,
+        `${data.date} 12:00:00`,
+        1,
+        data.targetSteps,
+        null,
+        admin.id,
+      ],
+    );
+
+    const savedTaskId = result.insertId;
+
+    // Assigne la mission à tous les utilisateurs actifs
+    const allUsers = await this.usersRepository.find({ where: { isActive: true } });
+    if (allUsers.length > 0) {
+      const usersTasksEntries = allUsers.map((u) => ({
+        tasksId: savedTaskId,
+        userId: u.id,
+        invitation: true,
+      }));
+      await this.usersTasksRepository.insert(usersTasksEntries as any);
+    }
+
+    return { id: savedTaskId, title: data.title, date: data.date };
+  }
+
+  async getTodayDailyMission(userId: number): Promise<any> {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const task = await this.tasksRepository
+      .createQueryBuilder('task')
+      .where('task.isDailyMission = true')
+      .andWhere('DATE(task.StartDate) = :today', { today })
+      .getOne();
+
+    if (!task) return null;
+
+    const userTask = await this.usersTasksRepository.findOne({
+      where: { tasksId: task.id, userId },
     });
 
-    return userTasks
-      .filter(ut => {
-        if (!ut.task?.reminderTime) return false;
-        if (!ut.task.frequency) return true;
-        try {
-          const days: string[] = JSON.parse(ut.task.frequency);
-          return days.includes(todayCapital);
-        } catch { return false; }
-      })
-      .map(ut => ({
-        taskId: ut.task.id,
-        title: ut.task.title,
-        reminderTime: ut.task.reminderTime,
-      }));
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      points: task.points,
+      targetSteps: task.targetSteps,
+      steps: userTask?.steps ?? null,
+      validated: userTask?.validated ?? false,
+    };
+  }
+
+  async submitSteps(taskId: number, userId: number, steps: number): Promise<any> {
+    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+    if (!task) return { error: 'Mission introuvable' };
+
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const taskDate = this.toLocalDateStr(new Date(task.StartDate));
+    if (taskDate !== today) {
+      return { error: 'Cette mission ne peut être validée que le jour prévu' };
+    }
+
+    const userTask = await this.usersTasksRepository.findOne({
+      where: { tasksId: taskId, userId },
+    });
+    if (!userTask) return { error: 'Mission introuvable pour cet utilisateur' };
+
+    if (userTask.steps !== null && userTask.steps !== undefined) {
+      return { error: 'Les pas ont déjà été enregistrés pour aujourd\'hui' };
+    }
+
+    userTask.steps = steps;
+    userTask.validated = steps >= task.targetSteps;
+
+    return this.usersTasksRepository.save(userTask);
+  }
+
+  async getDailyMissionHistory(userId: number): Promise<any[]> {
+    const userTasks = await this.usersTasksRepository
+      .createQueryBuilder('ut')
+      .leftJoinAndSelect('ut.task', 'task')
+      .where('ut.userId = :userId', { userId })
+      .andWhere('task.isDailyMission = true')
+      .orderBy('task.StartDate', 'DESC')
+      .getMany();
+
+    return userTasks.map(ut => ({
+      taskId: ut.task.id,
+      title: ut.task.title,
+      date: ut.task.StartDate,
+      targetSteps: ut.task.targetSteps,
+      steps: ut.steps,
+      validated: ut.validated,
+      points: ut.task.points,
+    }));
+  }
+
+  async getAllDailyMissions(): Promise<any[]> {
+    const tasks = await this.tasksRepository
+      .createQueryBuilder('task')
+      .where('task.isDailyMission = true')
+      .orderBy('task.StartDate', 'DESC')
+      .getMany();
+
+    return tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      points: t.points,
+      targetSteps: t.targetSteps,
+      date: t.StartDate,
+    }));
+  }
+
+  private toLocalDateStr(d: Date): string {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  async getDailyMissionStreak(userId: number): Promise<any> {
+    const userTasks = await this.usersTasksRepository
+      .createQueryBuilder('ut')
+      .leftJoinAndSelect('ut.task', 'task')
+      .where('ut.userId = :userId', { userId })
+      .andWhere('task.isDailyMission = true')
+      .orderBy('task.StartDate', 'DESC')
+      .getMany();
+
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = this.toLocalDateStr(today);
+
+    const validatedDates = new Set(
+      userTasks
+        .filter(ut => ut.validated)
+        .map(ut => this.toLocalDateStr(new Date(ut.task.StartDate)))
+    );
+
+    const cursor = new Date(today);
+    if (!validatedDates.has(this.toLocalDateStr(cursor))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    while (validatedDates.has(this.toLocalDateStr(cursor))) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    monday.setDate(today.getDate() + diffToMonday);
+
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = this.toLocalDateStr(d);
+      const isValidated = validatedDates.has(dateStr);
+      const isPast = dateStr < todayStr;
+      const isToday = dateStr === todayStr;
+
+      weekDays.push({
+        date: dateStr,
+        validated: isValidated,
+        isFuture: !isPast && !(isToday && isValidated),
+      });
+    }
+
+    return { streak, weekDays };
+  }
+
+  async getProgressionStats(userId: number): Promise<any> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) return { scale: 'day', points: [] };
+
+    const accountCreationDate = new Date(user.CreationDate);
+    const now = new Date();
+    const daysSinceCreation = Math.floor((now.getTime() - accountCreationDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    let scale: 'day' | 'week' | 'month';
+    if (daysSinceCreation < 14) scale = 'day';
+    else if (daysSinceCreation < 90) scale = 'week';
+    else scale = 'month';
+
+    // Récupère toutes les validations de missions de groupe (via users-tasks, validated=true)
+    const groupValidations = await this.usersTasksRepository
+      .createQueryBuilder('ut')
+      .leftJoinAndSelect('ut.task', 'task')
+      .where('ut.userId = :userId', { userId })
+      .andWhere('ut.validated = true')
+      .andWhere('task.isDailyMission = false')
+      .getMany();
+
+    // Récupère toutes les validations de défi du jour (via users-tasks, validated=true, isDailyMission=true)
+    const dailyValidations = await this.usersTasksRepository
+      .createQueryBuilder('ut')
+      .leftJoinAndSelect('ut.task', 'task')
+      .where('ut.userId = :userId', { userId })
+      .andWhere('ut.validated = true')
+      .andWhere('task.isDailyMission = true')
+      .getMany();
+
+    const allDates: Date[] = [
+      ...groupValidations.map(ut => new Date(ut.task.StartDate)),
+      ...dailyValidations.map(ut => new Date(ut.task.StartDate)),
+    ];
+
+    // Ajoute ces 2 lignes :
+  const totalMissions = groupValidations.length + dailyValidations.length;
+  const totalPoints = [...groupValidations, ...dailyValidations].reduce((sum, ut) => sum + (ut.task.points ?? 0), 0);
+
+    // Regroupe par clé selon l'échelle choisie
+    const counts = new Map<string, number>();
+
+    for (const d of allDates) {
+      let key: string;
+      if (scale === 'day') {
+        key = this.toLocalDateStr(d);
+      } else if (scale === 'week') {
+        const monday = new Date(d);
+        const dow = d.getDay();
+        const diffToMonday = dow === 0 ? -6 : 1 - dow;
+        monday.setDate(d.getDate() + diffToMonday);
+        key = this.toLocalDateStr(monday);
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    // Génère les points dans l'ordre chronologique, en remplissant les périodes vides à 0
+    const points: { label: string; value: number }[] = [];
+
+    if (scale === 'day') {
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = this.toLocalDateStr(d);
+    points.push({ label: d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), value: counts.get(key) ?? 0 });
+  }
+} else if (scale === 'week') {
+      const numWeeks = Math.ceil(90 / 7);
+      for (let i = numWeeks - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i * 7);
+        const dow = d.getDay();
+        const diffToMonday = dow === 0 ? -6 : 1 - dow;
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + diffToMonday);
+        const key = this.toLocalDateStr(monday);
+        points.push({ label: monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), value: counts.get(key) ?? 0 });
+      }
+    } else {
+      const numMonths = Math.min(12, Math.ceil(daysSinceCreation / 30) + 1);
+      for (let i = numMonths - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        points.push({ label: d.toLocaleDateString('fr-FR', { month: 'short' }), value: counts.get(key) ?? 0 });
+      }
+    }
+
+    return { scale, points, totalMissions, totalPoints };
   }
 }

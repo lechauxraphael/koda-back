@@ -25,5 +25,8 @@ export class UsersTasks {
   validated!: boolean;
 
   @Column({ nullable: true })
-  validationProofUrl!: string; // URL de la photo de validation
+  validationProofUrl!: string;
+
+  @Column({ nullable: true })
+  steps!: number;
 }

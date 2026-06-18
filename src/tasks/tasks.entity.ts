@@ -26,17 +26,23 @@ export class Tasks {
   EndDate!: Date | null;
 
   @Column({ nullable: true })
-  frequency!: string; // JSON string ex: '["Lundi","Mercredi"]'
+  frequency!: string;
 
   @Column({ nullable: true, type: 'datetime' })
   deadline!: Date | null;
 
   @Column({ nullable: true })
-  reminderTime!: string; // ex: "09:00" ou null si pas de rappel
+  reminderTime!: string;
 
-  @ManyToOne(() => Groups, (groups) => groups.tasks, { nullable: false })
+  @Column({ default: false })
+  isDailyMission!: boolean;
+
+  @Column({ nullable: true })
+  targetSteps!: number;
+
+  @ManyToOne(() => Groups, (groups) => groups.tasks, { nullable: true })
   @JoinColumn({ name: 'groupId' })
-  groupId!: Groups;
+  groupId!: Groups | null;
 
   @ManyToOne(()=> Users, (users) => users.tasks, { nullable: false })
   @JoinColumn({ name: 'userId' })
