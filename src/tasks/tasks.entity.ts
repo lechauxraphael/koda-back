@@ -28,9 +28,6 @@ export class Tasks {
   @Column({ nullable: true })
   frequency!: string;
 
-  @Column({ nullable: true, type: 'datetime' })
-  deadline!: Date | null;
-
   @Column({ nullable: true })
   reminderTime!: string;
 
