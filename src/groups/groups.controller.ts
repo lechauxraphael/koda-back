@@ -5,9 +5,12 @@ import {
   ForbiddenException,
   Get,
   Post,
+  Patch,
   Body,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
   Param,
 } from '@nestjs/common';
 import {
@@ -17,6 +20,9 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { GroupsService } from './groups.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { IAuthInfoRequest } from '../auth/auth.guard';
@@ -26,6 +32,13 @@ import {
   GroupIdDto,
 } from './dto/groups.dto';
 import { MessageResponseDto } from 'src/common/dto/message-response.dto';
+
+const storage = diskStorage({
+  destination: './uploads',
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}${extname(file.originalname)}`);
+  },
+});
 
 @ApiTags('Groups')
 @Controller('groups')
@@ -201,5 +214,26 @@ export class GroupsController {
     const result = await this.groupsService.removeMember(body.groupId, body.username, req.user.username);
     if ('error' in result) throw new BadRequestException(result.error);
     return result;
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Patch('update/:id')
+  async updateGroup(@Param('id') id: number, @Body() body: { name: string }) {
+    if (!body.name) throw new BadRequestException('Le nom est requis');
+    return this.groupsService.updateGroup(Number(id), body.name);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post('updateImage/:id')
+  @UseInterceptors(FileInterceptor('file', { storage }))
+  async updateImage(
+    @Param('id') id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Aucun fichier fourni');
+    const imageUrl = `/uploads/${file.filename}`;
+    return this.groupsService.updateGroupImage(Number(id), imageUrl);
   }
 }

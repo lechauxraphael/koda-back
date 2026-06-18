@@ -52,4 +52,14 @@ export class TaskValidationController {
   async resolveGroup() {
     return this.service.resolveExpiredValidations();
   }
+
+  @ApiBearerAuth()
+@UseGuards(AuthGuard)
+@Get('mission/:taskId/user/:userId/history')
+async getMissionHistory(
+  @Param('taskId') taskId: number,
+  @Param('userId') userId: number,
+) {
+  return this.service.getMissionHistory(Number(taskId), Number(userId));
+}
 }

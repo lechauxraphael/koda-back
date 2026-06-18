@@ -230,6 +230,16 @@ export class GroupsService {
     return { message: 'Membre retiré' };
   }
 
+  async updateGroup(id: number, name: string): Promise<any> {
+    await this.groupsRepository.update(id, { name });
+    return this.findOneGroup(id);
+  }
+
+  async updateGroupImage(id: number, imageUrl: string): Promise<any> {
+    await this.groupsRepository.update(id, { imageUrl });
+    return this.findOneGroup(id);
+  }
+
   async leaveGroup(groupId: number, username: string): Promise<any> {
   const group = await this.groupsRepository.findOne({
     where: { id: groupId },

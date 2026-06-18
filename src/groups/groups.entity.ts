@@ -20,6 +20,9 @@ export class Groups {
   @Column({ default: () => 'CURRENT_TIMESTAMP' })
   dateCreation!: Date;
 
+  @Column({ nullable: true })
+  imageUrl!: string;
+
   @OneToMany(() => GroupUser, (groupUser) => groupUser.group)
 groupUsers!: GroupUser[];
 

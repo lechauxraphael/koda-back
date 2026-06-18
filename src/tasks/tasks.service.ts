@@ -145,6 +145,7 @@ async getGroupTasks(groupId: number): Promise<any[]> {
       participants: t.usersTasks?.map(ut => ({
         userId: ut.userId,
         username: ut.user?.username,
+        avatar: ut.user?.avatar ?? null,
         validated: ut.validated,
         validationProofUrl: ut.validationProofUrl,
       })) ?? [],
