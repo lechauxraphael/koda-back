@@ -25,8 +25,5 @@ export class UsersTasks {
   validated!: boolean;
 
   @Column({ nullable: true })
-  validationProofUrl!: string;
-
-  @Column({ nullable: true })
   steps!: number;
 }

@@ -5,6 +5,7 @@ import { Tasks } from './tasks.entity';
 import { Users } from 'src/users/user.entity';
 import { GroupUser } from 'src/group-user/group-user.entity';
 import { UsersTasks } from 'src/users-tasks/users-tasks.entity';
+import { TaskValidation } from 'src/task-validation/task-validation.entity';
 
 @Injectable()
 export class TasksService {
@@ -17,6 +18,8 @@ export class TasksService {
     private groupUserRepository: Repository<GroupUser>,
     @InjectRepository(UsersTasks)
     private usersTasksRepository: Repository<UsersTasks>,
+    @InjectRepository(TaskValidation)
+    private taskValidationRepository: Repository<TaskValidation>,
   ) {}
 
   async create(taskData: {
@@ -24,7 +27,6 @@ export class TasksService {
     title: string;
     description: string;
     frequency?: string;
-    deadline?: Date | null;
     reminderTime?: string;
     groupId?: number;
   }): Promise<any> {
@@ -52,7 +54,6 @@ export class TasksService {
       title: taskData.title,
       description: taskData.description,
       points: 0,
-      EndDate: taskData.deadline ?? null,
       frequency: taskData.frequency ?? null,
       reminderTime: taskData.reminderTime ?? null,
       groupId: taskData.groupId ? { id: taskData.groupId } as any : membership.group,
@@ -122,7 +123,6 @@ export class TasksService {
       .orderBy('task.StartDate', 'DESC')
       .getMany();
 
-    // Déduplique par id (au cas où)
     const seen = new Set();
     return tasks
       .filter(t => {
@@ -147,12 +147,11 @@ export class TasksService {
           username: ut.user?.username,
           avatar: ut.user?.avatar ?? null,
           validated: ut.validated,
-          validationProofUrl: ut.validationProofUrl,
         })) ?? [],
       }));
   }
 
-  async validateTask(taskId: number, userId: number, proofUrl: string): Promise<any> {
+  async validateTask(taskId: number, userId: number): Promise<any> {
     const userTask = await this.usersTasksRepository.findOne({
       where: { tasksId: taskId, userId },
     });
@@ -173,53 +172,51 @@ export class TasksService {
     }
 
     userTask.validated = true;
-    userTask.validationProofUrl = proofUrl;
     return this.usersTasksRepository.save(userTask);
   }
 
   async getPendingReminders(userId: number): Promise<any[]> {
-  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long' });
-  const todayCapital = today.charAt(0).toUpperCase() + today.slice(1);
+    const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long' });
+    const todayCapital = today.charAt(0).toUpperCase() + today.slice(1);
 
-  const userTasks = await this.usersTasksRepository
-    .createQueryBuilder('ut')
-    .leftJoinAndSelect('ut.task', 'task')
-    .leftJoinAndSelect('task.groupId', 'group')
-    .where('ut.userId = :userId', { userId })
-    .andWhere('ut.invitation = true')
-    .getMany();
+    const userTasks = await this.usersTasksRepository
+      .createQueryBuilder('ut')
+      .leftJoinAndSelect('ut.task', 'task')
+      .leftJoinAndSelect('task.groupId', 'group')
+      .where('ut.userId = :userId', { userId })
+      .andWhere('ut.invitation = true')
+      .getMany();
 
-  return userTasks
-    .filter(ut => {
-      if (!ut.task?.reminderTime) return false;
-      if (ut.task.isDailyMission) return false;
-      if (!ut.task.frequency) return true;
-      try {
-        const days: string[] = JSON.parse(ut.task.frequency);
-        return days.includes(todayCapital);
-      } catch { return false; }
-    })
-    .map(ut => ({
-      taskId: ut.task.id,
-      title: ut.task.title,
-      reminderTime: ut.task.reminderTime,
-      groupId: ut.task.groupId?.id ?? null,
-    }));
-}
+    return userTasks
+      .filter(ut => {
+        if (!ut.task?.reminderTime) return false;
+        if (ut.task.isDailyMission) return false;
+        if (!ut.task.frequency) return true;
+        try {
+          const days: string[] = JSON.parse(ut.task.frequency);
+          return days.includes(todayCapital);
+        } catch { return false; }
+      })
+      .map(ut => ({
+        taskId: ut.task.id,
+        title: ut.task.title,
+        reminderTime: ut.task.reminderTime,
+        groupId: ut.task.groupId?.id ?? null,
+      }));
+  }
 
   async createDailyMission(adminId: number, data: {
     title: string;
     description: string;
     points: number;
     targetSteps: number;
-    date: string; // format YYYY-MM-DD
+    date: string;
   }): Promise<any> {
     const admin = await this.usersRepository.findOne({ where: { id: adminId } });
     if (!admin || admin.role !== 'admin') {
       return { error: 'Action réservée aux administrateurs' };
     }
 
-    // Insertion via requête SQL brute pour éviter toute conversion de date par TypeORM
     const result = await this.tasksRepository.query(
       `INSERT INTO tasks (title, description, points, StartDate, EndDate, isDailyMission, targetSteps, groupId, userId)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -238,7 +235,6 @@ export class TasksService {
 
     const savedTaskId = result.insertId;
 
-    // Assigne la mission à tous les utilisateurs actifs
     const allUsers = await this.usersRepository.find({ where: { isActive: true } });
     if (allUsers.length > 0) {
       const usersTasksEntries = allUsers.map((u) => ({
@@ -405,7 +401,7 @@ export class TasksService {
 
   async getProgressionStats(userId: number): Promise<any> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
-    if (!user) return { scale: 'day', points: [] };
+    if (!user) return { scale: 'day', points: [], totalMissions: 0, totalPoints: 0 };
 
     const accountCreationDate = new Date(user.CreationDate);
     const now = new Date();
@@ -416,7 +412,7 @@ export class TasksService {
     else if (daysSinceCreation < 90) scale = 'week';
     else scale = 'month';
 
-    // Récupère toutes les validations de missions de groupe (via users-tasks, validated=true)
+    // Missions de groupe validées via users-tasks
     const groupValidations = await this.usersTasksRepository
       .createQueryBuilder('ut')
       .leftJoinAndSelect('ut.task', 'task')
@@ -425,7 +421,7 @@ export class TasksService {
       .andWhere('task.isDailyMission = false')
       .getMany();
 
-    // Récupère toutes les validations de défi du jour (via users-tasks, validated=true, isDailyMission=true)
+    // Défis du jour validés via users-tasks
     const dailyValidations = await this.usersTasksRepository
       .createQueryBuilder('ut')
       .leftJoinAndSelect('ut.task', 'task')
@@ -434,18 +430,48 @@ export class TasksService {
       .andWhere('task.isDailyMission = true')
       .getMany();
 
+    // Missions de groupe avec majorité de votes positifs via task-validation
+    const voteValidations = await this.taskValidationRepository
+      .createQueryBuilder('tv')
+      .leftJoinAndSelect('tv.task', 'task')
+      .where('tv.requesterId = :userId', { userId })
+      .andWhere('tv.resolved = true')
+      .getMany();
+
+    // Groupe les votes par taskId + date pour calculer la majorité
+    const voteMap = new Map<string, { yes: number; no: number; task: any; date: string }>();
+    for (const tv of voteValidations) {
+      const dateStr = tv.validationDate?.toString().split('T')[0] ?? '';
+      const key = `${tv.task.id}-${dateStr}`;
+      if (!voteMap.has(key)) {
+        voteMap.set(key, { yes: 0, no: 0, task: tv.task, date: dateStr });
+      }
+      const entry = voteMap.get(key)!;
+      if (tv.vote === 'yes') entry.yes++;
+      else if (tv.vote === 'no') entry.no++;
+    }
+
+    // Garde uniquement les dates avec majorité de OUI
+    const voteValidatedDates: Date[] = [];
+    for (const entry of voteMap.values()) {
+      if (entry.yes > entry.no) {
+        voteValidatedDates.push(new Date(entry.date));
+      }
+    }
+
     const allDates: Date[] = [
       ...groupValidations.map(ut => new Date(ut.task.StartDate)),
       ...dailyValidations.map(ut => new Date(ut.task.StartDate)),
+      ...voteValidatedDates,
     ];
 
-    // Ajoute ces 2 lignes :
-  const totalMissions = groupValidations.length + dailyValidations.length;
-  const totalPoints = [...groupValidations, ...dailyValidations].reduce((sum, ut) => sum + (ut.task.points ?? 0), 0);
+    const totalMissions = groupValidations.length + dailyValidations.length + voteValidatedDates.length;
+    const totalPoints = [
+      ...groupValidations,
+      ...dailyValidations,
+    ].reduce((sum, ut) => sum + (ut.task.points ?? 0), 0);
 
-    // Regroupe par clé selon l'échelle choisie
     const counts = new Map<string, number>();
-
     for (const d of allDates) {
       let key: string;
       if (scale === 'day') {
@@ -462,17 +488,16 @@ export class TasksService {
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
 
-    // Génère les points dans l'ordre chronologique, en remplissant les périodes vides à 0
     const points: { label: string; value: number }[] = [];
 
     if (scale === 'day') {
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    const key = this.toLocalDateStr(d);
-    points.push({ label: d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), value: counts.get(key) ?? 0 });
-  }
-} else if (scale === 'week') {
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const key = this.toLocalDateStr(d);
+        points.push({ label: d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }), value: counts.get(key) ?? 0 });
+      }
+    } else if (scale === 'week') {
       const numWeeks = Math.ceil(90 / 7);
       for (let i = numWeeks - 1; i >= 0; i--) {
         const d = new Date(now);

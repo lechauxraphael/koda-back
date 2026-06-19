@@ -3,12 +3,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { TaskValidation } from './task-validation.entity';
+import { UsersTasks } from 'src/users-tasks/users-tasks.entity';
 
 @Injectable()
 export class TaskValidationService {
   constructor(
     @InjectRepository(TaskValidation)
     private repo: Repository<TaskValidation>,
+    @InjectRepository(UsersTasks)
+    private usersTasksRepository: Repository<UsersTasks>,
   ) {}
 
   async submitValidation(taskId: number, requesterId: number): Promise<any> {
@@ -114,7 +117,6 @@ export class TaskValidationService {
   }
 
   async getMissionHistory(taskId: number, userId: number): Promise<any> {
-    // Récupère la mission
     const task = await this.repo.manager.findOne('tasks', {
       where: { id: taskId },
     }) as any;
@@ -132,14 +134,12 @@ export class TaskValidationService {
 
     const scheduledDays = frequency.map(d => dayMapFR[d]);
 
-    // Récupère toutes les validations pour cette mission et cet utilisateur
     const allValidations = await this.repo
       .createQueryBuilder('tv')
       .where('tv.taskId = :taskId', { taskId })
       .andWhere('tv.requesterId = :userId', { userId })
       .getMany();
 
-    // Pour chaque date unique, calcule si validée
     const dateSet = new Set(allValidations.map(v => v.validationDate?.toString().split('T')[0]).filter(Boolean));
     const validatedDates: Record<string, boolean> = {};
 
@@ -151,13 +151,12 @@ export class TaskValidationService {
         .andWhere('tv.validationDate = :dateStr', { dateStr })
         .getMany();
 
-const yesCount = votes.filter(v => v.vote === 'yes' && v.voter?.id !== userId).length;
-const noCount = votes.filter(v => v.vote === 'no').length;
+      const yesCount = votes.filter(v => v.vote === 'yes' && v.voter?.id !== userId).length;
+      const noCount = votes.filter(v => v.vote === 'no').length;
 
       validatedDates[dateStr as string] = yesCount > noCount;
     }
 
-    // Génère tous les jours programmés entre startDate et aujourd'hui
     const days = [];
     const cursor = new Date(startDate);
     const today = new Date();
@@ -219,6 +218,17 @@ const noCount = votes.filter(v => v.vote === 'no').length;
         .andWhere('requesterId = :requesterId', { requesterId: validation.requester.id })
         .andWhere('validationDate = :yesterdayStr', { yesterdayStr })
         .execute();
+
+      // Met à jour users-tasks.validated si majorité positive
+      if (validated) {
+        await this.usersTasksRepository
+          .createQueryBuilder()
+          .update()
+          .set({ validated: true })
+          .where('tasksId = :taskId', { taskId: validation.task.id })
+          .andWhere('userId = :userId', { userId: validation.requester.id })
+          .execute();
+      }
     }
   }
 

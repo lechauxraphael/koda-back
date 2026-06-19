@@ -8,8 +8,6 @@ import {
   Req,
   UseGuards,
   Param,
-  UseInterceptors,
-  UploadedFile,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -17,20 +15,10 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
 import { TasksService } from './tasks.service';
 import { AuthGuard } from '../auth/auth.guard';
 import type { IAuthInfoRequest } from '../auth/auth.guard';
 import { CreateTaskDto, TaskIdDto } from './dto/tasks.dto';
-
-const storage = diskStorage({
-  destination: './uploads',
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}${extname(file.originalname)}`);
-  },
-});
 
 @ApiTags('Tasks')
 @Controller('tasks')
@@ -58,7 +46,6 @@ export class TasksController {
       description: body.description,
       username: req.user.username,
       frequency: body.frequency,
-      deadline: body.deadline ? new Date(body.deadline) : null,
       reminderTime: body.reminderTime,
       groupId: body.groupId ? Number(body.groupId) : undefined,
     });
@@ -118,24 +105,6 @@ export class TasksController {
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Valider une tache avec une photo' })
-  @ApiResponse({ status: 201, description: 'Tache validee' })
-  @UseGuards(AuthGuard)
-  @Post(':taskId/validate')
-  @UseInterceptors(FileInterceptor('file', { storage }))
-  async validateTask(
-    @Param('taskId') taskId: number,
-    @Req() req: IAuthInfoRequest,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    if (!file) throw new BadRequestException('Une photo est requise pour valider la mission');
-    const proofUrl = `/uploads/${file.filename}`;
-    const result = await this.tasksService.validateTask(Number(taskId), Number(req.user.sub), proofUrl);
-    if ('error' in result) throw new BadRequestException(result.error);
-    return result;
-  }
-
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Rappels du jour pour l utilisateur connecte' })
   @ApiResponse({ status: 200, description: 'Liste des rappels' })
   @UseGuards(AuthGuard)
@@ -145,69 +114,69 @@ export class TasksController {
   }
 
   @ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Post('admin/daily-mission')
-async createDailyMission(@Req() req: IAuthInfoRequest, @Body() body: any) {
-  if (!body.title || !body.description || !body.targetSteps || !body.date) {
-    throw new BadRequestException('title, description, targetSteps et date sont requis');
+  @UseGuards(AuthGuard)
+  @Post('admin/daily-mission')
+  async createDailyMission(@Req() req: IAuthInfoRequest, @Body() body: any) {
+    if (!body.title || !body.description || !body.targetSteps || !body.date) {
+      throw new BadRequestException('title, description, targetSteps et date sont requis');
+    }
+    const result = await this.tasksService.createDailyMission(Number(req.user.sub), {
+      title: body.title,
+      description: body.description,
+      points: body.points ? Number(body.points) : 0,
+      targetSteps: Number(body.targetSteps),
+      date: body.date,
+    });
+    if ('error' in result) throw new BadRequestException(result.error);
+    return result;
   }
-  const result = await this.tasksService.createDailyMission(Number(req.user.sub), {
-    title: body.title,
-    description: body.description,
-    points: body.points ? Number(body.points) : 0,
-    targetSteps: Number(body.targetSteps),
-    date: body.date,
-  });
-  if ('error' in result) throw new BadRequestException(result.error);
-  return result;
-}
 
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Get('daily-mission/today')
-async getTodayDailyMission(@Req() req: IAuthInfoRequest) {
-  return this.tasksService.getTodayDailyMission(Number(req.user.sub));
-}
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('daily-mission/today')
+  async getTodayDailyMission(@Req() req: IAuthInfoRequest) {
+    return this.tasksService.getTodayDailyMission(Number(req.user.sub));
+  }
 
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Post(':taskId/submit-steps')
-async submitSteps(
-  @Param('taskId') taskId: number,
-  @Req() req: IAuthInfoRequest,
-  @Body() body: { steps: number },
-) {
-  if (body.steps === undefined) throw new BadRequestException('steps est requis');
-  const result = await this.tasksService.submitSteps(Number(taskId), Number(req.user.sub), Number(body.steps));
-  if ('error' in result) throw new BadRequestException(result.error);
-  return result;
-}
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Post(':taskId/submit-steps')
+  async submitSteps(
+    @Param('taskId') taskId: number,
+    @Req() req: IAuthInfoRequest,
+    @Body() body: { steps: number },
+  ) {
+    if (body.steps === undefined) throw new BadRequestException('steps est requis');
+    const result = await this.tasksService.submitSteps(Number(taskId), Number(req.user.sub), Number(body.steps));
+    if ('error' in result) throw new BadRequestException(result.error);
+    return result;
+  }
 
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Get('daily-mission/history')
-async getDailyMissionHistory(@Req() req: IAuthInfoRequest) {
-  return this.tasksService.getDailyMissionHistory(Number(req.user.sub));
-}
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('daily-mission/history')
+  async getDailyMissionHistory(@Req() req: IAuthInfoRequest) {
+    return this.tasksService.getDailyMissionHistory(Number(req.user.sub));
+  }
 
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Get('admin/daily-missions')
-async getAllDailyMissions() {
-  return this.tasksService.getAllDailyMissions();
-}
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('admin/daily-missions')
+  async getAllDailyMissions() {
+    return this.tasksService.getAllDailyMissions();
+  }
 
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Get('daily-mission/streak')
-async getDailyMissionStreak(@Req() req: IAuthInfoRequest) {
-  return this.tasksService.getDailyMissionStreak(Number(req.user.sub));
-}
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('daily-mission/streak')
+  async getDailyMissionStreak(@Req() req: IAuthInfoRequest) {
+    return this.tasksService.getDailyMissionStreak(Number(req.user.sub));
+  }
 
-@ApiBearerAuth()
-@UseGuards(AuthGuard)
-@Get('progression-stats')
-async getProgressionStats(@Req() req: IAuthInfoRequest) {
-  return this.tasksService.getProgressionStats(Number(req.user.sub));
-}
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('progression-stats')
+  async getProgressionStats(@Req() req: IAuthInfoRequest) {
+    return this.tasksService.getProgressionStats(Number(req.user.sub));
+  }
 }

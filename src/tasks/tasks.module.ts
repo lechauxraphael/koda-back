@@ -5,11 +5,11 @@ import { TasksController } from './tasks.controller';
 import { Tasks } from './tasks.entity';
 import { Users } from 'src/users/user.entity';
 import { GroupUser } from 'src/group-user/group-user.entity';
-
 import { UsersTasks } from 'src/users-tasks/users-tasks.entity';
+import { TaskValidation } from 'src/task-validation/task-validation.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Tasks, Users, GroupUser, UsersTasks])],
+  imports: [TypeOrmModule.forFeature([Tasks, Users, GroupUser, UsersTasks, TaskValidation])],
   providers: [TasksService],
   controllers: [TasksController],
 })

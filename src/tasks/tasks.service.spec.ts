@@ -5,6 +5,7 @@ import { Tasks } from './tasks.entity';
 import { Users } from '../users/user.entity';
 import { GroupUser } from '../group-user/group-user.entity';
 import { UsersTasks } from '../users-tasks/users-tasks.entity';
+import { TaskValidation } from '../task-validation/task-validation.entity';
 
 // ─── Factories ───────────────────────────────────────────────────────────────
 
@@ -39,7 +40,6 @@ function makeTask(overrides = {}): Tasks {
     StartDate: new Date('2026-06-18T12:00:00'),
     EndDate: null,
     frequency: null,
-    deadline: null,
     reminderTime: null,
     isDailyMission: false,
     targetSteps: null,
@@ -60,7 +60,6 @@ function makeUserTask(overrides = {}): UsersTasks {
     user: makeUser(),
     invitation: true,
     validated: false,
-    validationProofUrl: null,
     steps: null,
     ...overrides,
   } as unknown as UsersTasks;
@@ -96,6 +95,14 @@ const mockUsersTasksRepo = {
   createQueryBuilder: jest.fn(),
 };
 
+const mockTaskValidationRepo = {
+  findOne: jest.fn(),
+  find: jest.fn(),
+  save: jest.fn(),
+  insert: jest.fn(),
+  createQueryBuilder: jest.fn(),
+};
+
 // Helper pour chaîner createQueryBuilder
 function mockQB(result: any) {
   const qb = {
@@ -124,6 +131,7 @@ describe('TasksService', () => {
         { provide: getRepositoryToken(Users), useValue: mockUsersRepo },
         { provide: getRepositoryToken(GroupUser), useValue: mockGroupUserRepo },
         { provide: getRepositoryToken(UsersTasks), useValue: mockUsersTasksRepo },
+        { provide: getRepositoryToken(TaskValidation), useValue: mockTaskValidationRepo },
       ],
     }).compile();
 
@@ -310,8 +318,7 @@ describe('TasksService', () => {
   describe('validateTask', () => {
     it('retourne une erreur si la tâche est introuvable', async () => {
       mockUsersTasksRepo.findOne.mockResolvedValue(null);
-      mockTasksRepo.findOne.mockResolvedValue(null);
-      const result = await service.validateTask(99, 1, '/uploads/test.jpg');
+      const result = await service.validateTask(99, 1);
       expect(result.error).toBeDefined();
     });
 
@@ -322,14 +329,12 @@ describe('TasksService', () => {
       mockTasksRepo.findOne.mockResolvedValue(task);
       mockUsersTasksRepo.save.mockImplementation(async (ut) => ut);
 
-      const result = await service.validateTask(1, 1, '/uploads/test.jpg');
+      const result = await service.validateTask(1, 1);
       expect(result.validated).toBe(true);
-      expect(result.validationProofUrl).toBe('/uploads/test.jpg');
     });
 
     it('refuse la validation si aujourd\'hui n\'est pas dans la fréquence', async () => {
       const userTask = makeUserTask();
-      // Force une fréquence qui exclut forcément le jour actuel (liste vide = tous les jours autorisés, on met un jour improbable)
       const joursExclus = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
       const todayFR = new Date().toLocaleDateString('fr-FR', { weekday: 'long' });
       const todayCapital = todayFR.charAt(0).toUpperCase() + todayFR.slice(1);
@@ -339,7 +344,7 @@ describe('TasksService', () => {
       mockUsersTasksRepo.findOne.mockResolvedValue(userTask);
       mockTasksRepo.findOne.mockResolvedValue(task);
 
-      const result = await service.validateTask(1, 1, '/uploads/test.jpg');
+      const result = await service.validateTask(1, 1);
       expect(result.error).toBeDefined();
     });
   });
@@ -351,6 +356,7 @@ describe('TasksService', () => {
       const recentUser = makeUser({ CreationDate: new Date() });
       mockUsersRepo.findOne.mockResolvedValue(recentUser);
       mockUsersTasksRepo.createQueryBuilder = mockQB([]);
+      mockTaskValidationRepo.createQueryBuilder = mockQB([]);
 
       const result = await service.getProgressionStats(1);
       expect(result.scale).toBe('day');
@@ -363,6 +369,7 @@ describe('TasksService', () => {
       const user = makeUser({ CreationDate: d });
       mockUsersRepo.findOne.mockResolvedValue(user);
       mockUsersTasksRepo.createQueryBuilder = mockQB([]);
+      mockTaskValidationRepo.createQueryBuilder = mockQB([]);
 
       const result = await service.getProgressionStats(1);
       expect(result.scale).toBe('week');
@@ -374,6 +381,7 @@ describe('TasksService', () => {
       const user = makeUser({ CreationDate: d });
       mockUsersRepo.findOne.mockResolvedValue(user);
       mockUsersTasksRepo.createQueryBuilder = mockQB([]);
+      mockTaskValidationRepo.createQueryBuilder = mockQB([]);
 
       const result = await service.getProgressionStats(1);
       expect(result.scale).toBe('month');
@@ -402,9 +410,32 @@ describe('TasksService', () => {
         };
       });
 
+      mockTaskValidationRepo.createQueryBuilder = mockQB([]);
+
       const result = await service.getProgressionStats(1);
       expect(result.totalMissions).toBe(2);
       expect(result.totalPoints).toBe(30);
+    });
+
+    it('inclut les missions de groupe avec majorité de votes positifs via task-validation', async () => {
+      const user = makeUser({ CreationDate: new Date() });
+      mockUsersRepo.findOne.mockResolvedValue(user);
+
+      mockUsersTasksRepo.createQueryBuilder = mockQB([]);
+
+      const task = makeTask({ points: 15, isDailyMission: false });
+      const voteYes = {
+        task,
+        requesterId: 1,
+        vote: 'yes',
+        resolved: true,
+        validationDate: new Date().toISOString().split('T')[0],
+      } as any;
+
+      mockTaskValidationRepo.createQueryBuilder = mockQB([voteYes]);
+
+      const result = await service.getProgressionStats(1);
+      expect(result.totalMissions).toBeGreaterThanOrEqual(1);
     });
   });
 
