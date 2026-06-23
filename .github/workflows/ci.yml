@@ -1,0 +1,40 @@
+name: CI - Tests et build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Lancer les tests unitaires
+        run: npm run test
+
+      - name: Lancer les tests end-to-end
+        run: npm run test:e2e
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Construire l'image Docker
+        run: docker build -t koda-back .
