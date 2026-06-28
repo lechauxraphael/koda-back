@@ -32,33 +32,34 @@ export class TasksController {
   @ApiResponse({ status: 404, description: 'Utilisateur introuvable' })
   @UseGuards(AuthGuard)
   @Post('create')
-  async create(@Req() req: IAuthInfoRequest, @Body() body: any) {
-    if (!body || !body.title || !body.description) {
-      throw new BadRequestException('Le title et la description sont requis');
-    }
-
-    if (!req.user || !req.user.username) {
-      throw new BadRequestException('Utilisateur non authentifié ou token invalide');
-    }
-
-    const result = await this.tasksService.create({
-      title: body.title,
-      description: body.description,
-      username: req.user.username,
-      frequency: body.frequency,
-      reminderTime: body.reminderTime,
-      groupId: body.groupId ? Number(body.groupId) : undefined,
-    });
-
-    if ('error' in result) {
-      if (result.error === "L'utilisateur n'existe pas") {
-        throw new NotFoundException(result.error);
-      }
-      throw new BadRequestException(result.error);
-    }
-
-    return result;
+async create(@Req() req: IAuthInfoRequest, @Body() body: any) {
+  if (!body || !body.title || !body.description) {
+    throw new BadRequestException('Le title et la description sont requis');
   }
+
+  if (!req.user || !req.user.username) {
+    throw new BadRequestException('Utilisateur non authentifié ou token invalide');
+  }
+
+  const result = await this.tasksService.create({
+    title: body.title,
+    description: body.description,
+    username: req.user.username,
+    frequency: body.frequency,
+    deadline: body.deadline ? `${body.deadline} 12:00:00` : null,
+    reminderTime: body.reminderTime,
+    groupId: body.groupId ? Number(body.groupId) : undefined,
+  });
+
+  if ('error' in result) {
+    if (result.error === "L'utilisateur n'existe pas") {
+      throw new NotFoundException(result.error);
+    }
+    throw new BadRequestException(result.error);
+  }
+
+  return result;
+}
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Accepter une invitation de tache' })

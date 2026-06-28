@@ -189,48 +189,57 @@ export class TaskValidationService {
     };
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async resolveExpiredValidations(): Promise<void> {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+ @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+async resolveExpiredValidations(): Promise<void> {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
 
-    const all = await this.repo
-      .createQueryBuilder('tv')
-      .leftJoinAndSelect('tv.task', 'task')
-      .leftJoinAndSelect('tv.requester', 'requester')
-      .leftJoinAndSelect('tv.voter', 'voter')
-      .where('tv.resolved = false')
-      .andWhere('tv.validationDate = :yesterdayStr', { yesterdayStr })
-      .getMany();
+  const all = await this.repo
+    .createQueryBuilder('tv')
+    .leftJoinAndSelect('tv.task', 'task')
+    .leftJoinAndSelect('tv.requester', 'requester')
+    .leftJoinAndSelect('tv.voter', 'voter')
+    .where('tv.resolved = false')
+    .andWhere('tv.validationDate < :todayStr', { todayStr })
+    .getMany();
 
-    const pending = all.filter(tv => tv.voter?.id === tv.requester?.id);
+  const pending = all.filter(tv => tv.voter?.id === tv.requester?.id);
 
-    for (const validation of pending) {
-      const votes = await this.getVotesByDate(validation.task.id, validation.requester.id, yesterdayStr);
-      const validated = votes.yes.length >= votes.no.length;
+  // Regroupe par couple (taskId, requesterId, validationDate) pour traiter
+  // chaque journée non résolue séparément, peu importe son ancienneté
+  const processedKeys = new Set<string>();
 
-      await this.repo
-        .createQueryBuilder()
-        .update()
-        .set({ resolved: true })
-        .where('taskId = :taskId', { taskId: validation.task.id })
-        .andWhere('requesterId = :requesterId', { requesterId: validation.requester.id })
-        .andWhere('validationDate = :yesterdayStr', { yesterdayStr })
-        .execute();
+for (const validation of pending) {
+  const dateStr = validation.validationDate?.toString().split('T')[0];
+  if (!dateStr) continue; // sécurité : ignore si la date est manquante
 
-      // Met à jour users-tasks.validated si majorité positive
-      if (validated) {
-        await this.usersTasksRepository
-          .createQueryBuilder()
-          .update()
-          .set({ validated: true })
-          .where('tasksId = :taskId', { taskId: validation.task.id })
-          .andWhere('userId = :userId', { userId: validation.requester.id })
-          .execute();
-      }
-    }
+  const key = `${validation.task.id}-${validation.requester.id}-${dateStr}`;
+  if (processedKeys.has(key)) continue;
+  processedKeys.add(key);
+
+  const votes = await this.getVotesByDate(validation.task.id, validation.requester.id, dateStr);
+  const validated = votes.yes.length >= votes.no.length;
+
+  await this.repo
+    .createQueryBuilder()
+    .update()
+    .set({ resolved: true })
+    .where('taskId = :taskId', { taskId: validation.task.id })
+    .andWhere('requesterId = :requesterId', { requesterId: validation.requester.id })
+    .andWhere('validationDate = :dateStr', { dateStr })
+    .execute();
+
+  if (validated) {
+    await this.usersTasksRepository
+      .createQueryBuilder()
+      .update()
+      .set({ validated: true })
+      .where('tasksId = :taskId', { taskId: validation.task.id })
+      .andWhere('userId = :userId', { userId: validation.requester.id })
+      .execute();
   }
+}
+}
 
   private async getVotesByDate(taskId: number, requesterId: number, date: string): Promise<any> {
     const votes = await this.repo

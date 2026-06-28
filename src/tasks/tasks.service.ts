@@ -22,67 +22,69 @@ export class TasksService {
     private taskValidationRepository: Repository<TaskValidation>,
   ) {}
 
-  async create(taskData: {
-    username: string;
-    title: string;
-    description: string;
-    frequency?: string;
-    reminderTime?: string;
-    groupId?: number;
-  }): Promise<any> {
-    const user = await this.usersRepository.findOne({
-      where: { username: taskData.username },
-    });
+async create(taskData: {
+  username: string;
+  title: string;
+  description: string;
+  frequency?: string;
+  deadline?: string | null;
+  reminderTime?: string;
+  groupId?: number;
+}): Promise<any> {
+  const user = await this.usersRepository.findOne({
+    where: { username: taskData.username },
+  });
 
-    if (!user) {
-      return { error: 'L\'utilisateur n\'existe pas' };
-    }
-
-    const membership = await this.groupUserRepository.findOne({
-      where: {
-        userId: user.id,
-        invitation: true,
-      },
-      relations: ['group'],
-    });
-
-    if (!membership) {
-      return { error: 'Vous devez être dans un groupe pour créer une tâche' };
-    }
-
-    const newTask = this.tasksRepository.create({
-      title: taskData.title,
-      description: taskData.description,
-      points: 0,
-      frequency: taskData.frequency ?? null,
-      reminderTime: taskData.reminderTime ?? null,
-      groupId: taskData.groupId ? { id: taskData.groupId } as any : membership.group,
-      userId: user,
-      reward: null,
-      partner: null,
-    } as any);
-
-    const savedTask = await this.tasksRepository.save(newTask) as any;
-
-    const groupMembers = await this.groupUserRepository.find({
-      where: {
-        groupId: membership.groupId,
-        invitation: true,
-      },
-    });
-
-    if (groupMembers.length > 0) {
-      const usersTasksEntries = groupMembers.map((member) => ({
-        tasksId: savedTask.id,
-        userId: member.userId,
-        invitation: member.userId === user.id ? true : false,
-      }));
-
-      await this.usersTasksRepository.insert(usersTasksEntries as any);
-    }
-
-    return savedTask;
+  if (!user) {
+    return { error: 'L\'utilisateur n\'existe pas' };
   }
+
+  const membership = await this.groupUserRepository.findOne({
+    where: {
+      userId: user.id,
+      invitation: true,
+    },
+    relations: ['group'],
+  });
+
+  if (!membership) {
+    return { error: 'Vous devez être dans un groupe pour créer une tâche' };
+  }
+
+  const newTask = this.tasksRepository.create({
+    title: taskData.title,
+    description: taskData.description,
+    points: 0,
+    frequency: taskData.frequency ?? null,
+    EndDate: taskData.deadline ?? null,
+    reminderTime: taskData.reminderTime ?? null,
+    groupId: taskData.groupId ? { id: taskData.groupId } as any : membership.group,
+    userId: user,
+    reward: null,
+    partner: null,
+  } as any);
+
+  const savedTask = await this.tasksRepository.save(newTask) as any;
+
+  const groupMembers = await this.groupUserRepository.find({
+    where: {
+      groupId: membership.groupId,
+      invitation: true,
+    },
+  });
+
+  if (groupMembers.length > 0) {
+    const usersTasksEntries = groupMembers.map((member) => ({
+      tasksId: savedTask.id,
+      userId: member.userId,
+      invitation: member.userId === user.id ? true : false,
+    }));
+
+    await this.usersTasksRepository.insert(usersTasksEntries as any);
+  }
+
+  return savedTask;
+}
 
   async acceptTaskInvitation(taskId: number, username: string): Promise<any | { error: string }> {
     const user = await this.usersRepository.findOne({ where: { username } });
